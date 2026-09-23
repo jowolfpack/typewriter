@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+
+# Texts kept out of the published build: anything you may not republish.
+texts-local/**/*.txt

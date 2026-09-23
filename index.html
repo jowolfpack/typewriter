@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="./favicon.svg" />
+    <title>Typewriter</title>
+  </head>
+  <body>
+    <main class="app" id="app">
+      <header class="app-header">
+        <button type="button" class="back" id="back" hidden>&larr; Library</button>
+        <h1 id="title">Typewriter</h1>
+        <div class="settings">
+          <label>
+            <span class="sr-only">Text language</span>
+            <!-- The layout the app assumes. It cannot be detected, only told. -->
+            <select id="lang">
+              <option value="en">English</option>
+              <option value="de">Deutsch</option>
+            </select>
+          </label>
+          <label>
+            <span class="sr-only">Theme</span>
+            <select id="theme">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="stats-toggle" checked />
+            Stats
+          </label>
+          <button type="button" class="link" id="history-link">History</button>
+        </div>
+      </header>
+
+      <!-- Library: texts first, because that is what the app is for. -->
+      <section id="home">
+        <div class="card">
+          <h2>Texts</h2>
+          <ul class="entries" id="text-list"></ul>
+          <p class="hint" id="library-hint"></p>
+          <div class="actions">
+            <button type="button" class="secondary" id="import-text">Add a .txt</button>
+          </div>
+          <input type="file" id="text-file" accept=".txt,text/plain" hidden />
+        </div>
+
+        <div class="card">
+          <h2>Basic training</h2>
+          <p class="hint">
+            Ten-finger drills for the <span id="layout-name"></span> layout.
+            Every lesson is open; there is nothing to unlock.
+          </p>
+          <ul class="entries" id="lesson-list"></ul>
+        </div>
+      </section>
+
+      <!-- Typing. Deliberately almost empty: the line, and nothing else. -->
+      <section id="type" hidden>
+        <div id="stream-slot"></div>
+        <p class="typing-meta" id="typing-meta"></p>
+        <p class="hint" id="type-hint"></p>
+        <!--
+          Characters arrive through this field, not through keydown: dead keys
+          and AltGr on a German layout only produce a finished letter here.
+        -->
+        <input
+          id="capture"
+          class="capture"
+          type="text"
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+          aria-label="Type the text shown above"
+        />
+      </section>
+
+      <section class="card" id="done" hidden>
+        <h2 id="done-title">Done</h2>
+        <p class="summary" id="summary"></p>
+        <p class="hint" id="done-detail"></p>
+        <div class="actions">
+          <button type="button" id="next-chunk">Continue</button>
+          <button type="button" class="secondary" id="again">Again</button>
+          <button type="button" class="secondary" id="to-library">Library</button>
+        </div>
+      </section>
+
+      <section id="history" hidden>
+        <div class="card">
+          <h2>Progress</h2>
+          <div id="charts"></div>
+        </div>
+
+        <div class="card">
+          <h2>Weak keys</h2>
+          <ul class="keys" id="weak-keys"></ul>
+          <p class="hint" id="weak-summary"></p>
+        </div>
+
+        <div class="card">
+          <h2>Sessions</h2>
+          <ul class="sessions" id="session-list"></ul>
+          <p class="hint">
+            This history lives in this browser only. Nothing is sent anywhere and
+            there is no account to recover it from, so clearing site data erases
+            it. Export it if you would miss it.
+          </p>
+          <div class="actions">
+            <button type="button" class="secondary" id="export">Export</button>
+            <button type="button" class="secondary" id="import">Import</button>
+          </div>
+          <input type="file" id="profile-file" accept="application/json,.json" hidden />
+          <p class="feedback" id="profile-feedback" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
