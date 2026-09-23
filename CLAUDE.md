@@ -70,11 +70,10 @@ normalisation of the text itself.
 invisible characters -- a zero-width space or soft hyphen is a cell with no
 glyph and no key, which reads as the line refusing your keystroke.
 
-**Line breaks are kept**, because a poem's lineation is the poem. A `
-` is an
-ordinary position typed with Enter and drawn as a dim `↵`; it must never
-reach the DOM as a real newline, which `white-space: pre` would act on. Blank
-lines still separate chunks, so a stanza or a paragraph is one part.
+**Line breaks are kept**, because a poem's lineation is the poem. A newline is
+an ordinary position, typed with Enter and drawn as a dim `\u21b5`; it must
+never reach the DOM as a real newline, which `white-space: pre` would act on.
+Blank lines still separate chunks, so a stanza or a paragraph is one part.
 
 Hard-wrapped prose (Project Gutenberg wraps at ~70 characters) would otherwise
 put an Enter mid-sentence that the author never wrote. `looksWrapped()` spots it
@@ -97,9 +96,11 @@ against the wrong keyboard.
 **The line (`src/stream.ts`)** -- spans in an `overflow: hidden` window, moved
 by `translateX(-cursor ch)` with the caret pinned at 38%. The font is monospace
 **for this one element**, which is what makes `ch` exact and means nothing has to
-be measured. Only ±120 characters around the cursor are in the DOM. A wrong cell
-shows **what was typed**, not what was expected, because that is what tells you
-which letter to delete.
+be measured. The whole chunk is in the DOM: a window that slid with the caret
+would drop cells off the front and move the line with no transition to carry it,
+and `text.ts` caps a chunk at a few hundred characters anyway. A wrong cell shows
+**what was typed**, not what was expected, because that is what tells you which
+letter to delete.
 
 **Input (`src/main.ts`)** -- characters come from the capture field's value, not
 from `keydown`. A dead key (`´` then `e`) and an AltGr combination both report as
@@ -114,8 +115,8 @@ letter is input, a letter cannot also be a command -- the header toggle is it.
 
 **Persistence (`src/storage.ts`)** -- `localStorage` only, every access
 try/catch'd. One `typewriter:profile` blob holds sessions, key counts, cleared
-lessons, saved positions, the per-text line choice and browser-imported texts; settings are separate flat
-keys. `parseProfile()` validates every row because the same function reads a
+lessons, saved positions, the per-text line choice and browser-imported texts;
+settings are separate flat keys. `parseProfile()` validates every row because the same function reads a
 **file the user picked off their disk**, so that validation is load-bearing.
 
 **No accounts, by decision.** A static bundle already gives every visitor their
