@@ -23,6 +23,9 @@ const WORDS = 28;
  * Rungs as [name, newly added keys]. Each inherits everything above it, which
  * is built up in `ladder()` -- restating the full key set per rung is how the
  * two layouts would silently drift apart.
+ *
+ * The names stay English in both ladders: the language switch changes the
+ * keyboard and the text, never the interface.
  */
 const EN_STEPS: ReadonlyArray<readonly [string, string]> = [
   ["Home keys f and j", "fj"],
@@ -46,26 +49,26 @@ const EN_STEPS: ReadonlyArray<readonly [string, string]> = [
 ];
 
 const DE_STEPS: ReadonlyArray<readonly [string, string]> = [
-  ["Grundstellung f und j", "fj"],
-  ["d und k", "dk"],
-  ["s und l", "sl"],
-  ["a und ö", "aö"],
-  ["Zeigefinger: g und h", "gh"],
-  ["e und i", "ei"],
-  ["r und u", "ru"],
-  ["t und z", "tz"],
-  ["w und o", "wo"],
-  ["q und p", "qp"],
-  ["v und m", "vm"],
-  ["c und Komma", "c,"],
-  ["x und Punkt", "x."],
-  ["y und Bindestrich", "y-"],
-  ["b und n", "bn"],
-  ["ä und ü", "äü"],
+  ["Home keys f and j", "fj"],
+  ["d and k", "dk"],
+  ["s and l", "sl"],
+  ["a and ö", "aö"],
+  ["The index reaches: g and h", "gh"],
+  ["e and i", "ei"],
+  ["r and u", "ru"],
+  ["t and z", "tz"],
+  ["w and o", "wo"],
+  ["q and p", "qp"],
+  ["v and m", "vm"],
+  ["c and comma", "c,"],
+  ["x and period", "x."],
+  ["y and hyphen", "y-"],
+  ["b and n", "bn"],
+  ["ä and ü", "äü"],
   ["ß", "ß"],
-  ["Großbuchstaben", "ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ"],
-  ["Satzzeichen", "'\"?!:-"],
-  ["Ziffern", "1234567890"],
+  ["Capitals", "ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ"],
+  ["Punctuation", "'\"?!:-"],
+  ["Numbers", "1234567890"],
 ];
 
 function ladder(steps: ReadonlyArray<readonly [string, string]>, lang: Lang): Lesson[] {

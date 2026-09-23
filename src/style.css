@@ -41,6 +41,16 @@
   box-sizing: border-box;
 }
 
+/*
+ * Every screen is a <section hidden>, and an author rule as ordinary as
+ * `section { display: grid }` outranks the browser's `[hidden] { display:none }`
+ * -- which renders all four screens stacked on one page. This guard is what
+ * makes `hidden` mean hidden; do not remove it.
+ */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   padding: 24px 16px 48px;
@@ -60,6 +70,19 @@ section {
   display: grid;
   gap: 20px;
   align-content: start;
+}
+
+/*
+ * A grid item refuses to shrink below its content unless told to, and the
+ * typing line is one unwrapped line of a whole paragraph: without this the
+ * section stretches to the width of the text and the page scrolls sideways for
+ * three thousand pixels.
+ */
+.app > section,
+section > *,
+.stream,
+.stream-window {
+  min-width: 0;
 }
 
 .sr-only {
@@ -83,6 +106,12 @@ section {
 h1 {
   margin: 0;
   flex: 1;
+  /* A book title is long; wrapping it pushes the settings onto a second row
+     and the whole header jumps every time you open a text. */
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 1.15rem;
   letter-spacing: 0.02em;
 }
@@ -257,6 +286,13 @@ button.secondary {
 
 /* -- The typing line --------------------------------------------------- */
 
+/* The line sits in the middle of the screen rather than at the top, so that
+   typing is the only thing in front of you. */
+#type {
+  min-height: calc(100vh - 180px);
+  align-content: center;
+}
+
 .stream {
   position: relative;
   background: var(--surface);
@@ -395,6 +431,15 @@ button.secondary {
   stroke: var(--line);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
+}
+
+.chart-dates {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .chart-empty {

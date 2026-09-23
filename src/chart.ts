@@ -43,6 +43,9 @@ export class TrendChart {
   private readonly marker: SVGCircleElement;
   private readonly readout: HTMLSpanElement;
   private readonly empty: HTMLParagraphElement;
+  private readonly dates: HTMLDivElement;
+  private readonly from: HTMLSpanElement;
+  private readonly to: HTMLSpanElement;
   private points: Point[] = [];
   private placed: Array<{ x: number; y: number; point: Point }> = [];
 
@@ -81,13 +84,21 @@ export class TrendChart {
     this.plot.setAttribute("role", "img");
     this.plot.append(baseline, this.line, this.marker);
 
+    // A trend with no time on it is not a trend: two dates is the least that
+    // says whether this was a fortnight or a year.
+    this.from = document.createElement("span");
+    this.to = document.createElement("span");
+    this.dates = document.createElement("div");
+    this.dates.className = "chart-dates";
+    this.dates.append(this.from, this.to);
+
     this.empty = document.createElement("p");
     this.empty.className = "chart-empty";
     this.empty.textContent = "Two sessions draw a line.";
 
     this.element = document.createElement("div");
     this.element.className = "chart";
-    this.element.append(head, this.plot, this.empty);
+    this.element.append(head, this.plot, this.dates, this.empty);
 
     // A line chart in a browser is interactive by nature; the readout beside the
     // title is the tooltip, which avoids a floating box on a deliberately quiet
@@ -102,6 +113,7 @@ export class TrendChart {
     const enough = this.points.length >= 2;
     // `hidden` is an HTML attribute; an SVG element needs the style property.
     this.plot.style.display = enough ? "" : "none";
+    this.dates.hidden = !enough;
     this.empty.hidden = enough;
     if (!enough) {
       this.readout.textContent = this.points[0] ? this.options.format(this.points[0].value) : "";
@@ -128,6 +140,8 @@ export class TrendChart {
     }));
 
     this.line.setAttribute("points", this.placed.map((p) => `${p.x},${p.y}`).join(" "));
+    this.from.textContent = shortDate(first);
+    this.to.textContent = shortDate(last);
     this.plot.setAttribute(
       "aria-label",
       `${this.options.label} over ${this.points.length} sessions, latest ${this.options.format(
@@ -157,12 +171,14 @@ export class TrendChart {
     }
     this.marker.setAttribute("cx", String(nearest.x));
     this.marker.setAttribute("cy", String(nearest.y));
-    const when = new Date(nearest.point.at).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    });
+    const when = shortDate(nearest.point.at);
     this.readout.textContent = `${this.options.format(nearest.point.value)} · ${when}`;
   }
+}
+
+/** The viewer's own locale: this is a date they will compare to their calendar. */
+function shortDate(at: number): string {
+  return new Date(at).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 /** Headroom above and below so the line is never pinned to an edge. */

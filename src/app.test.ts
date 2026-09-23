@@ -14,6 +14,7 @@ import { prepare } from "./text";
 
 // Not import.meta.url: under the jsdom environment that is an http URL.
 const html = readFileSync(resolve(process.cwd(), "index.html"), "utf-8");
+const css = readFileSync(resolve(process.cwd(), "src/style.css"), "utf-8");
 
 function byId<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -25,9 +26,21 @@ function visible(id: string): boolean {
   return !byId(id).hidden;
 }
 
+/**
+ * Vite hands the stylesheet to the app as a side-effect import, which vitest
+ * stubs out -- so the real CSS has to be put in by hand or these tests would
+ * pass while the page looked nothing like this.
+ */
+function applyStylesheet(): void {
+  const style = document.createElement("style");
+  style.textContent = css;
+  document.head.append(style);
+}
+
 /** Fresh DOM plus a fresh module instance, since main.ts runs on import. */
 async function boot(): Promise<void> {
   document.documentElement.innerHTML = html;
+  applyStylesheet();
   localStorage.clear();
   document.documentElement.removeAttribute("data-theme");
   vi.resetModules();
@@ -80,6 +93,22 @@ function firstChunkOf(id: string): string {
 
 beforeEach(async () => {
   await boot();
+});
+
+describe("screens", () => {
+  /**
+   * `section { display: grid }` outranks the browser's `[hidden]` rule, which
+   * once left all four screens rendering at once while every `.hidden` check
+   * in this file still passed. Assert what is painted, not what is set.
+   */
+  it("really hides the screens it is not showing", () => {
+    for (const id of ["type", "done", "history"]) {
+      expect(getComputedStyle(byId(id)).display).toBe("none");
+    }
+    open("text-list", "Walden");
+    expect(getComputedStyle(byId("home")).display).toBe("none");
+    expect(getComputedStyle(byId("type")).display).not.toBe("none");
+  });
 });
 
 describe("the library", () => {
