@@ -79,6 +79,43 @@ describe("TypingSession", () => {
     expect(session.cursor).toBe(4);
   });
 
+  it("accepts a plain quote where the text has a typographic one", () => {
+    const session = new TypingSession("„Ja“");
+    typeAll(session, String.fromCharCode(34) + "Ja" + String.fromCharCode(34));
+    expect(session.done).toBe(true);
+    expect(session.isError).toBe(false);
+  });
+
+  it("accepts a hyphen for a dash and a period for an ellipsis", () => {
+    const session = new TypingSession("a — b…");
+    typeAll(session, "a - b.");
+    expect(session.done).toBe(true);
+  });
+
+  it("still shows the real character after a stand-in was typed", () => {
+    const session = new TypingSession("„Ja“");
+    typeAll(session, String.fromCharCode(34));
+    expect(session.cellAt(0)).toEqual({ expected: "„", typed: String.fromCharCode(34), state: "done" });
+  });
+
+  it("does not accept a stand-in the other way round", () => {
+    const session = new TypingSession(String.fromCharCode(34));
+    typeAll(session, "„");
+    expect(session.isError).toBe(true);
+  });
+
+  it("treats a line break as an ordinary position", () => {
+    const session = new TypingSession("eins\nzwei");
+    typeAll(session, "eins");
+    expect(session.isError).toBe(false);
+    session.type(" ");
+    expect(session.isError).toBe(true);
+    session.backspace();
+    session.type("\n");
+    typeAll(session, "zwei");
+    expect(session.done).toBe(true);
+  });
+
   it("treats one code point as one cell", () => {
     const session = new TypingSession("grüß");
     typeAll(session, "grüß");

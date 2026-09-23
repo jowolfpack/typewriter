@@ -16,7 +16,7 @@ import type { Theme } from "./storage";
 import { TypeLine } from "./stream";
 import { clean, extractTitle, prepare } from "./text";
 import { applyTheme, initTheme } from "./theme";
-import { TypingSession } from "./typing";
+import { TypingSession, keyFor } from "./typing";
 
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -128,13 +128,16 @@ function renderHome(): void {
   ui.textList.replaceChildren(
     ...texts.map((entry) => {
       const position = stored.positions[entry.id] ?? 0;
-      const parts = entry.broken ? 0 : prepare(entry.raw, settings.normalise()).chunks.length;
+      const joined = stored.joined[entry.id] ?? false;
+      const prepared = entry.broken ? null : prepare(entry.raw, joined);
+      const parts = prepared?.chunks.length ?? 0;
       const note = entry.broken
         ? "not UTF-8"
         : position > 0
           ? `part ${position + 1} of ${parts}`
           : `${parts} parts`;
       const row = entryRow(entry.title, note, entry.broken, () => startText(entry));
+      if (prepared?.wrapped === true) row.append(linesButton(entry.id, joined));
       if (entry.source === "imported") row.append(removeButton(entry));
       return row;
     }),
@@ -183,6 +186,30 @@ function entryRow(
   row.className = "entry-row";
   row.append(button);
   return row;
+}
+
+/**
+ * Offered only when a file looks hard-wrapped at a margin. The guess is never
+ * applied on its own: joining a poem would destroy its lineation, so the choice
+ * is the reader's and it is visible on the row.
+ */
+function linesButton(id: string, joined: boolean): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "entry-aside secondary";
+  button.textContent = joined ? "lines joined" : "lines as in file";
+  button.title =
+    "This file looks wrapped at a margin. Joining puts each paragraph back " +
+    "together; leaving it types the line breaks the file actually has.";
+  button.addEventListener("click", () => {
+    updateProfile((draft) => {
+      draft.joined[id] = !joined;
+      // The chunks are different now, so a saved position points elsewhere.
+      delete draft.positions[id];
+    });
+    render();
+  });
+  return button;
 }
 
 function removeButton(entry: TextEntry): HTMLButtonElement {
@@ -347,7 +374,7 @@ function activityTitle(): string {
 // -- Flow ---------------------------------------------------------------
 
 function startText(entry: TextEntry): void {
-  const { chunks } = prepare(entry.raw, settings.normalise());
+  const { chunks } = prepare(entry.raw, profile().joined[entry.id] ?? false);
   if (chunks.length === 0) return;
   const stored = profile().positions[entry.id] ?? 0;
   // A saved position can outlive the text it points into -- the file may have
@@ -380,7 +407,7 @@ function typeChar(ch: string): void {
   const index = session.cursor;
   const expected = session.expectedAt(index);
   if (expected === "") return;
-  metrics.record(index, expected, session.type(ch));
+  metrics.record(index, keyFor(expected), session.type(ch));
 }
 
 /** One redraw after a burst of input, rather than one per character. */
@@ -499,6 +526,15 @@ function wire(): void {
     }
     if (event.key === "Escape") {
       toLibrary();
+      return;
+    }
+    // A line break is a character here, typed like any other. The field is
+    // single-line, so Enter never reaches the input event on its own.
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (session === null) return;
+      typeChar("\n");
+      afterInput();
       return;
     }
     if (event.key !== "Backspace") return;

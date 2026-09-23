@@ -25,6 +25,13 @@ do. Keep this folder to:
 - your own writing,
 - anything else you hold the rights to.
 
+## Check the text before you trust it
+
+The seed texts here were typed from memory, not copied from a verified edition,
+so treat them as placeholders: a wrong word is a wrong word you will practise a
+hundred times. Replace them with files from Project Gutenberg, Wikisource or the
+Deutsches Textarchiv, which is the workflow this folder exists for anyway.
+
 Everything else goes in `texts-local/`, which is gitignored and never leaves
 your machine, or through the app's own import button, which keeps the text in
 your browser only.

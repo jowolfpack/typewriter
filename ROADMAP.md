@@ -13,6 +13,8 @@ See `CLAUDE.md` for how they fit together, and treat these as settled decisions:
   the right thing to do and does not erase it.
 - **The folder is the language.** `texts/de/...` is German, and that is the only
   metadata a text has.
+- **The text is never rewritten.** Punctuation and lineation are the writing;
+  the app bends on input (a stand-in key is accepted) and never on display.
 - **No on-screen keyboard.** The minimalism is the aesthetic, not an omission.
 - **No accounts.** A static site already gives every visitor a private history;
   the JSON export covers the rest. See `CLAUDE.md`.
@@ -25,8 +27,6 @@ Nothing here is agreed -- ask before building any of it.
   for it; it needs a generator and a place to launch it from.
 - A words-per-minute target or a daily streak, if that turns out to be
   motivating rather than stressful.
-- Respecting line breaks for poetry and code, where the paragraph-flattening
-  that prose needs is wrong.
 - More languages. `layouts.ts` and the ladder are the only places that know
   about a keyboard, so a third is data plus a rung list.
 - Local profiles: a name on the device so a shared computer keeps two histories.

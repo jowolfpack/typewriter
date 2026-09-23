@@ -58,11 +58,28 @@ The folder sets the language (`texts/de/...` is German); a leading `# Title`
 line names the text, otherwise the filename does. `texts-local/` is gitignored,
 so those texts work locally and are never published.
 
-`prepare()` strips the BOM, normalises to NFC, rewrites curly quotes, dashes,
-ellipses and non-breaking spaces into characters a keyboard actually has, and
-chunks on paragraphs. **Without that normalisation the typist reaches a
-character they physically cannot produce** -- it is not cosmetic. Paragraph
-breaks become chunk boundaries rather than characters, so Enter is never typed.
+**The text is never rewritten.** An earlier version replaced curly quotes,
+dashes and ellipses with ASCII lookalikes so every character was reachable.
+That is the wrong trade -- punctuation is part of the writing and in verse part
+of the art -- so the tolerance lives on the *input* side instead: `STAND_INS` in
+`typing.ts` accepts `"` for `„` and `-` for `—`, one keystroke per
+position, while the line still shows what the author wrote. Do not reintroduce
+normalisation of the text itself.
+
+`prepare()` only settles the encoding (BOM, NFC, CRLF) and removes genuinely
+invisible characters -- a zero-width space or soft hyphen is a cell with no
+glyph and no key, which reads as the line refusing your keystroke.
+
+**Line breaks are kept**, because a poem's lineation is the poem. A `
+` is an
+ordinary position typed with Enter and drawn as a dim `↵`; it must never
+reach the DOM as a real newline, which `white-space: pre` would act on. Blank
+lines still separate chunks, so a stanza or a paragraph is one part.
+
+Hard-wrapped prose (Project Gutenberg wraps at ~70 characters) would otherwise
+put an Enter mid-sentence that the author never wrote. `looksWrapped()` spots it
+and the library offers a per-text "lines joined" switch -- **the guess is never
+applied on its own**, because silently joining a poem would destroy it.
 
 **Lessons (`src/lessons.ts`, `src/layouts.ts`)** -- rungs are `[name, new keys]`
 and inherit everything above them; never restate a full key set, or the two
@@ -97,7 +114,7 @@ letter is input, a letter cannot also be a command -- the header toggle is it.
 
 **Persistence (`src/storage.ts`)** -- `localStorage` only, every access
 try/catch'd. One `typewriter:profile` blob holds sessions, key counts, cleared
-lessons, saved positions and browser-imported texts; settings are separate flat
+lessons, saved positions, the per-text line choice and browser-imported texts; settings are separate flat
 keys. `parseProfile()` validates every row because the same function reads a
 **file the user picked off their disk**, so that validation is load-bearing.
 
@@ -137,6 +154,8 @@ one. The forks pool times out starting a jsdom worker on Windows, so
 - UI text is English, always, including when the request was written in German.
   The language switch changes the content and the layout, never the interface.
 - Texts in `texts/` are published. Public-domain or your own only; everything
-  else belongs in `texts-local/` or in browser import.
+  else belongs in `texts-local/` or in browser import. The seed texts were
+  written from memory and are placeholders -- do not treat them as accurate
+  editions, and say so if asked to add more that way.
 - Pushing to `main` deploys to GitHub Pages (`.github/workflows/deploy.yml`).
   `base: "./"` is what makes the build work from the Pages subpath; leave it.

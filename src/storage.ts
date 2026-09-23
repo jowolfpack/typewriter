@@ -46,6 +46,8 @@ export interface Profile {
   lessons: string[];
   /** Text id -> index of the next chunk. */
   positions: Record<string, number>;
+  /** Text id -> join hard-wrapped lines. Absent means honour the file. */
+  joined: Record<string, boolean>;
   imported: ImportedText[];
 }
 
@@ -53,7 +55,6 @@ const KEYS = {
   lang: "typewriter:lang",
   theme: "typewriter:theme",
   stats: "typewriter:stats",
-  normalise: "typewriter:normalise",
   profile: "typewriter:profile",
 } as const;
 
@@ -101,17 +102,18 @@ export const settings = {
   setStats(value: boolean): void {
     write(KEYS.stats, value ? "on" : "off");
   },
-  /** Typography is rewritten unless switched off; see `text.ts` for why. */
-  normalise(): boolean {
-    return read(KEYS.normalise) !== "off";
-  },
-  setNormalise(value: boolean): void {
-    write(KEYS.normalise, value ? "on" : "off");
-  },
 };
 
 function emptyProfile(): Profile {
-  return { version: 1, sessions: [], keys: {}, lessons: [], positions: {}, imported: [] };
+  return {
+    version: 1,
+    sessions: [],
+    keys: {},
+    lessons: [],
+    positions: {},
+    joined: {},
+    imported: [],
+  };
 }
 
 /**
@@ -154,6 +156,12 @@ export function parseProfile(raw: string | null): Profile | null {
   if (isRecord(positions)) {
     for (const [id, index] of Object.entries(positions)) {
       if (typeof index === "number" && Number.isFinite(index)) profile.positions[id] = index;
+    }
+  }
+  const joined = parsed["joined"];
+  if (isRecord(joined)) {
+    for (const [id, value] of Object.entries(joined)) {
+      if (typeof value === "boolean") profile.joined[id] = value;
     }
   }
   const imported = parsed["imported"];

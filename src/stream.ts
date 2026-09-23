@@ -11,6 +11,13 @@ import type { TypingSession } from "./typing";
 /** A wrongly typed space needs a body, or the red run has an invisible gap. */
 const SPACE_MARKER = "·";
 
+/**
+ * A line break shown on a line. The text is one continuous strip, so verse
+ * lineation has to be a visible character -- and it must never reach the DOM as
+ * a real newline, which `white-space: pre` would act on.
+ */
+const BREAK_MARKER = "↵";
+
 export class TypeLine {
   readonly element: HTMLDivElement;
   private readonly strip: HTMLDivElement;
@@ -61,9 +68,12 @@ export class TypeLine {
       // Show what was actually pressed at a wrong position: seeing the letter
       // you produced is what tells you which one to delete.
       const shown = cell.state === "wrong" ? (cell.typed ?? cell.expected) : cell.expected;
-      const text = cell.state === "wrong" && shown === " " ? SPACE_MARKER : shown;
+      let text = shown;
+      if (text === "\n") text = BREAK_MARKER;
+      else if (cell.state === "wrong" && text === " ") text = SPACE_MARKER;
+      const className = cell.expected === "\n" ? `${cell.state} break` : cell.state;
       if (span.textContent !== text) span.textContent = text;
-      if (span.className !== cell.state) span.className = cell.state;
+      if (span.className !== className) span.className = className;
     }
 
     // The caret is fixed in the window, so the strip is what moves. `ch` units

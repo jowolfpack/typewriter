@@ -7,6 +7,61 @@
  * needing a second code path.
  */
 
+/**
+ * Characters the text may contain that a standard EN or DE keyboard cannot
+ * produce, and the key that may stand in for each.
+ *
+ * The text keeps its real punctuation -- it is part of the writing, and in
+ * verse part of the art -- so the tolerance lives here instead: press `"` where
+ * the page shows `„` and it counts, while the line still shows `„`.
+ * One keystroke per position, always; an ellipsis is one cell and one press.
+ */
+const STAND_INS: Readonly<Record<string, string>> = {
+  "“": '"', // “
+  "”": '"', // ”
+  "„": '"', // „
+  "‟": '"', // ‟
+  "«": '"', // «
+  "»": '"', // »
+  "″": '"', // ″
+  "‘": "'", // ‘
+  "’": "'", // ’
+  "‚": "'", // ‚
+  "‛": "'", // ‛
+  "′": "'", // ′
+  "‹": "'", // ‹
+  "›": "'", // ›
+  "–": "-", // –
+  "—": "-", // —
+  "‒": "-", // ‒
+  "―": "-", // ―
+  "…": ".", // …
+  " ": " ", // no-break space
+  " ": " ", // narrow no-break space
+  " ": " ",
+  " ": " ",
+  " ": " ",
+  " ": " ",
+};
+
+/**
+ * Is this keystroke right for this position? Exact first, then the stand-in.
+ * The only place correctness is decided.
+ */
+export function matches(expected: string, typed: string): boolean {
+  return expected === typed || STAND_INS[expected] === typed;
+}
+
+/**
+ * The key a reader actually presses for this character. The statistics count
+ * that rather than the character on the page: pressing `"` for `„` is work
+ * done by the right little finger, and a weak-key list that blamed `„` --
+ * a key no German keyboard has -- would be advice nobody can act on.
+ */
+export function keyFor(expected: string): string {
+  return STAND_INS[expected] ?? expected;
+}
+
 /** How a single position should be drawn. */
 export type CellState = "done" | "wrong" | "pending";
 
@@ -73,7 +128,7 @@ export class TypingSession {
   type(ch: string): boolean {
     if (this.pressed.length >= this.chars.length) return false;
     const index = this.pressed.length;
-    const correct = this.chars[index] === ch;
+    const correct = matches(this.chars[index] ?? "", ch);
     this.pressed.push(ch);
     if (!correct && this.error === -1) this.error = index;
     return correct;

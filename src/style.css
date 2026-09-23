@@ -226,6 +226,31 @@ select {
   cursor: not-allowed;
 }
 
+/*
+ * A line-break marker is punctuation, not text: present but never loud. It must
+ * stay exactly one character wide -- the scroll offset is `cursor * 1ch`, so a
+ * margin here would walk the caret off the text.
+ */
+.stream-strip .break {
+  opacity: 0.55;
+}
+
+.entry-aside {
+  flex: none;
+  padding: 0 12px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 400;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.entry-aside:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+  filter: none;
+}
+
 /* Only imported texts have one: the repo folder is edited in the repo. */
 .entry-remove {
   flex: none;

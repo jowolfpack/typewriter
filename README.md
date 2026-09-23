@@ -45,9 +45,23 @@ The first line may be `# Some Title`, which names it and is not typed.
 Otherwise the filename is used. Save as UTF-8; a file that arrives as UTF-16 is
 flagged rather than offered as gibberish.
 
-Curly quotes, en dashes, ellipses and non-breaking spaces are rewritten into
-characters your keyboard can actually produce. Without that you would reach a
-character you cannot type and simply be stuck.
+### The text is shown exactly as written
+
+Curly quotes, en dashes and ellipses stay as the author set them -- punctuation
+is part of the writing, and in a poem it is part of the art. Since a German or
+US keyboard cannot produce `„` or `—`, the app accepts the nearest key
+instead: `"` counts for `„` and `“`, `'` for `‘` and `’`,
+`-` for `–` and `—`, `.` for `…`. One keypress per character,
+and the line still shows the real one.
+
+**Line breaks are kept too**, so verse keeps its lines. A break appears as a
+faint `↵` and you type it with Enter.
+
+Plain text files from Project Gutenberg are wrapped at about seventy characters,
+and those breaks are not the author's -- they would put an Enter in the middle
+of every sentence. The app spots that and offers a **lines joined** switch on
+the text in the library. It never decides for you: joining a poem would flatten
+it, which is the one thing this is trying not to do.
 
 ### Three places a text can live
 
@@ -56,6 +70,10 @@ character you cannot type and simply be stuck.
 | `texts/` | everyone, once pushed | commit it |
 | `texts-local/` | only this checkout | gitignored; never published |
 | Browser import | only this browser | drag a `.txt` onto the page |
+
+**The seed texts in `texts/` were written from memory, not copied from a
+verified edition.** Treat them as placeholders and replace them with real files
+-- a wrong word is a wrong word you will practise a hundred times.
 
 **`texts/` is published to the web.** Keep it to public-domain sources or your
 own writing -- committing a copyrighted book puts a copy of it online under your

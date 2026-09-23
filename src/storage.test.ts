@@ -27,11 +27,10 @@ beforeEach(() => {
 });
 
 describe("settings", () => {
-  it("defaults to English, dark, stats on, normalising on", () => {
+  it("defaults to English, dark, stats on", () => {
     expect(settings.lang()).toBe("en");
     expect(settings.theme()).toBe("dark");
     expect(settings.stats()).toBe(true);
-    expect(settings.normalise()).toBe(true);
   });
 
   it("falls back when a stored value is no longer valid", () => {
@@ -96,12 +95,14 @@ describe("export and import", () => {
         keys: { a: [1, 0], b: "nonsense" },
         lessons: ["en-1", 7],
         positions: { book: 3, other: "far" },
+        joined: { book: true, other: "yes" },
       }),
     );
     expect(parsed?.sessions).toHaveLength(1);
     expect(parsed?.keys).toEqual({ a: [1, 0] });
     expect(parsed?.lessons).toEqual(["en-1"]);
     expect(parsed?.positions).toEqual({ book: 3 });
+    expect(parsed?.joined).toEqual({ book: true });
   });
 
   it("survives a corrupt stored profile", () => {
