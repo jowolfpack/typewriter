@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { drillFor, lessonById, lessonsFor, seededRandom } from "./lessons";
+import { wordsWithin } from "./words";
 
 describe("lessonsFor", () => {
   it("carries every earlier key into the later rungs", () => {
@@ -61,5 +62,36 @@ describe("drillFor", () => {
     for (let seed = 0; seed < 40; seed += 1) {
       expect(drillFor(lesson, seededRandom(seed))).not.toMatch(/(.)\1\1/);
     }
+  });
+  it("stays all syllables while a rung can spell too few words", () => {
+    const lesson = lessonsFor("en")[0];
+    if (lesson === undefined) throw new Error("missing rung");
+    const pool = new Set(wordsWithin("en", lesson.keys));
+    expect(pool.size).toBeLessThan(8);
+    for (let seed = 0; seed < 20; seed += 1) {
+      const items = drillFor(lesson, seededRandom(seed)).split(" ");
+      // A syllable can happen to spell a word, but never most of the drill.
+      expect(items.filter((item) => pool.has(item)).length).toBeLessThan(items.length / 4);
+    }
+  });
+
+  it("is mostly real words once a rung can spell enough of them", () => {
+    for (const lang of ["en", "de"] as const) {
+      const rungs = lessonsFor(lang);
+      const last = rungs[rungs.length - 1];
+      if (last === undefined) throw new Error("missing rung");
+      const pool = new Set(wordsWithin(lang, last.keys).map((word) => word.toLowerCase()));
+      const items = drillFor(last, seededRandom(3)).split(" ");
+      // Strip what decorate() adds so a capitalised, punctuated word still counts.
+      const real = items.filter((item) => pool.has(item.replace(/[^\p{L}]/gu, "").toLowerCase()));
+      expect(real.length / items.length).toBeGreaterThan(0.4);
+    }
+  });
+
+  it("is deterministic on a rung that draws words", () => {
+    const rungs = lessonsFor("de");
+    const last = rungs[rungs.length - 1];
+    if (last === undefined) throw new Error("missing rung");
+    expect(drillFor(last, seededRandom(42))).toBe(drillFor(last, seededRandom(42)));
   });
 });

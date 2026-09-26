@@ -7,6 +7,7 @@
  */
 
 import type { Lang } from "./layouts";
+import { wordsWithin } from "./words";
 
 /** One rung. `keys` is everything allowed; `focus` is what this rung adds. */
 export interface Lesson {
@@ -14,10 +15,17 @@ export interface Lesson {
   readonly name: string;
   readonly focus: string;
   readonly keys: string;
+  readonly lang: Lang;
 }
 
-/** Words per generated drill. Long enough to settle into, short enough to end. */
-const WORDS = 28;
+/** Below this many spellable words, a rung is still all syllables. */
+const ENOUGH_WORDS = 8;
+
+/** Share of a drill made of real words, once there are enough to draw on. */
+const WORD_SHARE = 0.6;
+
+/** Items per generated drill. Long enough to settle into, short enough to end. */
+const ITEMS = 28;
 
 /**
  * Rungs as [name, newly added keys]. Each inherits everything above it, which
@@ -75,7 +83,7 @@ function ladder(steps: ReadonlyArray<readonly [string, string]>, lang: Lang): Le
   let carried = "";
   return steps.map(([name, focus], index) => {
     carried += focus;
-    return { id: `${lang}-${index + 1}`, name, focus, keys: carried };
+    return { id: `${lang}-${index + 1}`, name, focus, keys: carried, lang };
   });
 }
 
@@ -110,31 +118,62 @@ export function seededRandom(seed: number): () => number {
 }
 
 /**
- * Build a drill for one rung. New keys are over-represented, because a rung
- * that merely *allows* its new letters is a rung you can pass without learning
- * them, and no letter repeats three times running -- "fff" trains nothing.
+ * Build a drill for one rung.
+ *
+ * Early rungs have too few letters to spell anything, so they are syllables:
+ * new keys over-represented, because a rung that merely *allows* its new
+ * letters is one you can pass without learning them, and no letter three times
+ * running, since "fff" trains nothing.
+ *
+ * Once enough words are spellable the drill becomes mostly words, which is
+ * where the real skill is -- letter pairs, rhythm, and something your hands can
+ * carry over to actual text.
  */
 export function drillFor(lesson: Lesson, rng: () => number = Math.random): string {
-  const focus = Array.from(lesson.focus);
-  const all = Array.from(lesson.keys);
-  const words: string[] = [];
+  const pool = wordsWithin(lesson.lang, lesson.keys);
+  const useWords = pool.length >= ENOUGH_WORDS;
+  const items: string[] = [];
 
-  for (let w = 0; w < WORDS; w += 1) {
-    const length = 2 + Math.floor(rng() * 4);
-    let word = "";
-    for (let i = 0; i < length; i += 1) {
-      const pool = rng() < 0.55 ? focus : all;
-      let ch = pool[Math.floor(rng() * pool.length)] ?? all[0] ?? "f";
-      if (word.length >= 2 && word.endsWith(ch.repeat(2))) {
-        // Re-rolling could land on the same letter again, so pick from a pool
-        // that cannot: the whole point is that the third one is impossible.
-        const others = all.filter((other) => other !== ch);
-        ch = others[Math.floor(rng() * others.length)] ?? ch;
-      }
-      word += ch;
-    }
-    words.push(word);
+  for (let i = 0; i < ITEMS; i += 1) {
+    if (useWords && rng() < WORD_SHARE) items.push(decorate(pickWord(pool, rng), lesson, rng));
+    else items.push(syllable(lesson, rng));
   }
 
-  return words.join(" ");
+  return items.join(" ");
+}
+
+function pickWord(pool: readonly string[], rng: () => number): string {
+  return pool[Math.floor(rng() * pool.length)] ?? "";
+}
+
+/**
+ * A rung teaching capitals or punctuation has to practise them on something.
+ * Sticking them onto real words is closer to writing than a row of loose marks.
+ */
+function decorate(word: string, lesson: Lesson, rng: () => number): string {
+  const capitals = Array.from(lesson.focus).filter((ch) => ch !== ch.toLowerCase());
+  const marks = Array.from(lesson.focus).filter((ch) => /[^\p{L}\p{N}]/u.test(ch));
+  let out = word;
+  if (capitals.length > 0 && rng() < 0.7) out = out.charAt(0).toUpperCase() + out.slice(1);
+  if (marks.length > 0 && rng() < 0.6) out += marks[Math.floor(rng() * marks.length)] ?? "";
+  return out;
+}
+
+function syllable(lesson: Lesson, rng: () => number): string {
+  const focus = Array.from(lesson.focus);
+  const all = Array.from(lesson.keys);
+  const length = 2 + Math.floor(rng() * 4);
+  let word = "";
+  for (let i = 0; i < length; i += 1) {
+    const source = rng() < 0.55 ? focus : all;
+    let ch = source[Math.floor(rng() * source.length)] ?? all[0] ?? "f";
+    if (word.length >= 2 && word.endsWith(ch.repeat(2))) {
+      // Re-rolling could land on the same letter again, so pick from a pool
+      // that cannot: the whole point is that the third one is impossible.
+      const others = all.filter((other) => other !== ch);
+      ch = others[Math.floor(rng() * others.length)] ?? ch;
+    }
+    word += ch;
+  }
+  return word;
 }
