@@ -173,8 +173,9 @@ one. The forks pool times out starting a jsdom worker on Windows, so
 - UI text is English, always, including when the request was written in German.
   The language switch changes the content and the layout, never the interface.
 - Texts in `texts/` are published. Public-domain or your own only; everything
-  else belongs in `texts-local/` or in browser import. The seed texts were
-  written from memory and are placeholders -- do not treat them as accurate
-  editions, and say so if asked to add more that way.
+  else belongs in `texts-local/` or in browser import. **Only texts the user
+  names go in** -- never add one on your own initiative, not even as a sample.
+  Tests must not depend on what is in `texts/` beyond that; `app.test.ts`
+  brings its own prose through the import path.
 - Pushing to `main` deploys to GitHub Pages (`.github/workflows/deploy.yml`).
   `base: "./"` is what makes the build work from the Pages subpath; leave it.

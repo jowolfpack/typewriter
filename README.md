@@ -71,9 +71,9 @@ it, which is the one thing this is trying not to do.
 | `texts-local/` | only this checkout | gitignored; never published |
 | Browser import | only this browser | drag a `.txt` onto the page |
 
-**The seed texts in `texts/` were written from memory, not copied from a
-verified edition.** Treat them as placeholders and replace them with real files
--- a wrong word is a wrong word you will practise a hundred times.
+**`texts/` holds only texts the owner chose,** each taken from a named edition
+with a `Source:` link -- never typed from memory, because a wrong word is a
+wrong word you will practise a hundred times.
 
 **`texts/` is published to the web.** Keep it to public-domain sources or your
 own writing -- committing a copyrighted book puts a copy of it online under your

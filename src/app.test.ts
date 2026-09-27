@@ -9,7 +9,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { bundledTexts } from "./library";
 import { prepare } from "./text";
 
 // Not import.meta.url: under the jsdom environment that is an http URL.
@@ -37,11 +36,29 @@ function applyStylesheet(): void {
   document.head.append(style);
 }
 
+/**
+ * The tests bring their own prose rather than leaning on `texts/`, which holds
+ * only what the user chose and may change at any time. It is put in the way
+ * the app's own import button stores a text.
+ */
+const PRACTICE_TITLE = "Practice Prose";
+const PRACTICE = [
+  "The quick brown fox jumps over the lazy dog, then rests in the shade a while.",
+  "A second paragraph follows, so that the text has more than one part.",
+].join("\n\n");
+
 /** Fresh DOM plus a fresh module instance, since main.ts runs on import. */
 async function boot(): Promise<void> {
   document.documentElement.innerHTML = html;
   applyStylesheet();
   localStorage.clear();
+  localStorage.setItem(
+    "typewriter:profile",
+    JSON.stringify({
+      version: 1,
+      imported: [{ id: "imported:practice", title: PRACTICE_TITLE, lang: "en", raw: PRACTICE }],
+    }),
+  );
   document.documentElement.removeAttribute("data-theme");
   vi.resetModules();
   await import("./main");
@@ -81,13 +98,9 @@ function cells(): Array<{ text: string; state: string }> {
   }));
 }
 
-const WALDEN = "/texts/en/walden.txt";
-
-function firstChunkOf(id: string): string {
-  const entry = bundledTexts().find((text) => text.id === id);
-  if (entry === undefined) throw new Error(`Missing seed text ${id}`);
-  const first = prepare(entry.raw, true).chunks[0];
-  if (first === undefined) throw new Error("Seed text has no chunks");
+function firstChunk(): string {
+  const first = prepare(PRACTICE, true).chunks[0];
+  if (first === undefined) throw new Error("Practice text has no chunks");
   return first;
 }
 
@@ -105,18 +118,18 @@ describe("screens", () => {
     for (const id of ["type", "done", "history"]) {
       expect(getComputedStyle(byId(id)).display).toBe("none");
     }
-    open("text-list", "Walden");
+    open("text-list", PRACTICE_TITLE);
     expect(getComputedStyle(byId("home")).display).toBe("none");
     expect(getComputedStyle(byId("type")).display).not.toBe("none");
   });
 });
 
 describe("the library", () => {
-  it("opens on the library with the seed texts and the lesson ladder", () => {
+  it("opens on the library with its texts and the lesson ladder", () => {
     expect(visible("home")).toBe(true);
     expect(visible("type")).toBe(false);
     expect(entries("text-list").map((b) => b.textContent)).toEqual(
-      expect.arrayContaining([expect.stringContaining("Walden")]),
+      expect.arrayContaining([expect.stringContaining(PRACTICE_TITLE)]),
     );
     expect(entries("lesson-list").length).toBeGreaterThan(10);
   });
@@ -127,8 +140,8 @@ describe("the library", () => {
     lang.dispatchEvent(new Event("change"));
 
     const titles = entries("text-list").map((b) => b.textContent ?? "");
-    expect(titles.some((title) => title.includes("Die Verwandlung"))).toBe(true);
-    expect(titles.some((title) => title.includes("Walden"))).toBe(false);
+    expect(titles.some((title) => title.includes("Der Zauberlehrling"))).toBe(true);
+    expect(titles.some((title) => title.includes(PRACTICE_TITLE))).toBe(false);
     expect(byId("layout-name").textContent).toContain("QWERTZ");
     expect(entries("lesson-list").some((b) => b.textContent?.includes("ß") === true)).toBe(
       true,
@@ -138,10 +151,10 @@ describe("the library", () => {
 
 describe("typing a text", () => {
   it("shows the line and moves the cursor as you type", () => {
-    open("text-list", "Walden");
+    open("text-list", PRACTICE_TITLE);
     expect(visible("type")).toBe(true);
 
-    const chunk = firstChunkOf(WALDEN);
+    const chunk = firstChunk();
     type(chunk.slice(0, 4));
 
     const painted = cells();
@@ -150,8 +163,8 @@ describe("typing a text", () => {
   });
 
   it("reddens the whole tail after a mistake and clears it on backspace", () => {
-    open("text-list", "Walden");
-    const chunk = firstChunkOf(WALDEN);
+    open("text-list", PRACTICE_TITLE);
+    const chunk = firstChunk();
 
     type(`${chunk.slice(0, 3)}X`);
     type(chunk.slice(4, 6));
@@ -170,48 +183,48 @@ describe("typing a text", () => {
   });
 
   it("lets backspace run back through correct text", () => {
-    open("text-list", "Walden");
-    type(firstChunkOf(WALDEN).slice(0, 5));
+    open("text-list", PRACTICE_TITLE);
+    type(firstChunk().slice(0, 5));
     for (let i = 0; i < 5; i += 1) backspace();
     expect(cells()[0]?.state).toBe("pending");
   });
 
   it("cannot finish while a mistake is still on the line", () => {
-    open("text-list", "Walden");
-    const chunk = firstChunkOf(WALDEN);
+    open("text-list", PRACTICE_TITLE);
+    const chunk = firstChunk();
     type(`X${chunk.slice(1)}`);
     expect(visible("done")).toBe(false);
     expect(visible("type")).toBe(true);
   });
 
   it("finishes on an exact match and reports the session", () => {
-    open("text-list", "Walden");
-    type(firstChunkOf(WALDEN));
+    open("text-list", PRACTICE_TITLE);
+    type(firstChunk());
 
     expect(visible("done")).toBe(true);
     expect(byId("summary").textContent).toMatch(/wpm/);
     const stored = localStorage.getItem("typewriter:profile") ?? "";
-    expect(stored).toContain("Walden");
+    expect(stored).toContain(PRACTICE_TITLE);
   });
 
   it("resumes the next part when the text is reopened", async () => {
-    open("text-list", "Walden");
-    type(firstChunkOf(WALDEN));
+    open("text-list", PRACTICE_TITLE);
+    type(firstChunk());
     byId("to-library").click();
 
-    const row = entries("text-list").find((b) => b.textContent?.includes("Walden") === true);
+    const row = entries("text-list").find((b) => b.textContent?.includes(PRACTICE_TITLE) === true);
     expect(row?.textContent).toContain("part 2 of");
 
     // And it survives a reload, because the position is in storage, not memory.
     document.documentElement.innerHTML = html;
     vi.resetModules();
     await import("./main");
-    const again = entries("text-list").find((b) => b.textContent?.includes("Walden") === true);
+    const again = entries("text-list").find((b) => b.textContent?.includes(PRACTICE_TITLE) === true);
     expect(again?.textContent).toContain("part 2 of");
   });
 
   it("goes back to the library on Escape", () => {
-    open("text-list", "Walden");
+    open("text-list", PRACTICE_TITLE);
     byId("capture").dispatchEvent(
       new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
     );
@@ -221,7 +234,7 @@ describe("typing a text", () => {
 
 describe("the interface", () => {
   it("hides the statistics without leaving the text", () => {
-    open("text-list", "Walden");
+    open("text-list", PRACTICE_TITLE);
     expect(visible("typing-meta")).toBe(true);
 
     const toggle = byId<HTMLInputElement>("stats-toggle");

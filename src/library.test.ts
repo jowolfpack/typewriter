@@ -45,10 +45,9 @@ describe("entryFromPath", () => {
 });
 
 describe("the bundled library", () => {
-  it("picks up the seed texts from the texts/ folder", () => {
+  it("picks up the texts in the texts/ folder", () => {
     const paths = bundledTexts().map((entry) => entry.id);
-    expect(paths).toContain("/texts/de/die-verwandlung.txt");
-    expect(paths).toContain("/texts/en/walden.txt");
+    expect(paths).toContain("/texts/de/der-zauberlehrling.txt");
   });
 
   /**
@@ -73,6 +72,6 @@ describe("the bundled library", () => {
     ]);
     expect(de.every((entry) => entry.lang === "de")).toBe(true);
     expect(de[0]?.title).toBe("Aaa");
-    expect(de.map((entry) => entry.title)).toContain("Die Verwandlung");
+    expect(de.map((entry) => entry.title)).toContain("Der Zauberlehrling");
   });
 });

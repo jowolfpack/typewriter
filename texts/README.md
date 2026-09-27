@@ -46,13 +46,11 @@ do. Keep this folder to:
 
 ## Check the text before you trust it
 
-The seed texts here were typed from memory, not copied from a verified edition,
-so treat them as placeholders: a wrong word is a wrong word you will practise a
-hundred times. Replace them with files from Project Gutenberg, Wikisource or the
-Deutsches Textarchiv, which is the workflow this folder exists for anyway.
-
-Never add a new text that way. Download it from the source and strip only the
-markup; keep the edition's spelling, punctuation and line breaks exactly.
+This folder holds only texts the owner asked for. Never type one in from
+memory: a wrong word is a wrong word you will practise a hundred times.
+Download it from Project Gutenberg, Wikisource or the Deutsches Textarchiv,
+strip only the markup, and keep the edition's spelling, punctuation and line
+breaks exactly.
 `der-zauberlehrling.txt` is the 1827 text from Wikisource, which transcribes and
 proofreads it against page scans.
 
