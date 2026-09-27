@@ -30,6 +30,8 @@ export interface PreparedText {
   readonly chunks: string[];
   /** True when the file's line breaks look like hard wrapping, not lineation. */
   readonly wrapped: boolean;
+  /** A poem: one chunk, the whole of it, stanza breaks typed as blank lines. */
+  readonly verse: boolean;
 }
 
 /**
@@ -43,13 +45,31 @@ export function clean(raw: string): string {
 }
 
 /**
- * A leading `# Title` line names the text; otherwise the filename does. That is
+ * A leading `# Title` line names the text; otherwise the filename does. Under
+ * it, a `Source: <url>` line says where the text was taken from, so a reader
+ * can check a word against the edition instead of trusting this copy. That is
  * the whole file format, deliberately -- anything richer is a thing to maintain.
  */
-export function extractTitle(text: string): { title: string | null; body: string } {
-  const match = /^#\s+(.+?)\s*\n/.exec(text);
-  if (match?.[1] === undefined) return { title: null, body: text };
-  return { title: match[1], body: text.slice(match[0].length) };
+export function extractHeader(text: string): {
+  title: string | null;
+  source: string | null;
+  body: string;
+} {
+  let body = text;
+  let title: string | null = null;
+  let source: string | null = null;
+  const heading = /^#\s+(.+?)\s*\n/.exec(body);
+  if (heading?.[1] !== undefined) {
+    title = heading[1];
+    body = body.slice(heading[0].length);
+  }
+  // Only a web address: anything else on that line is the text itself.
+  const link = /^Source:[ \t]*(https?:\/\/\S+)[ \t]*\n/i.exec(body);
+  if (link?.[1] !== undefined) {
+    source = link[1];
+    body = body.slice(link[0].length);
+  }
+  return { title, source, body };
 }
 
 /** Blocks of consecutive lines, split on blank lines: paragraphs, or stanzas. */
@@ -133,8 +153,33 @@ export function toChunks(body: string, joinLines: boolean, max: number = MAX_CHU
   return blocks(body).flatMap((lines) => splitBlock(lines, max, join));
 }
 
+/**
+ * Is this a poem? Most of its blocks are several lines long and the lines are
+ * not wrapped at a margin. A prose file with one paragraph per line has
+ * single-line blocks, so it never qualifies.
+ */
+export function looksLikeVerse(body: string): boolean {
+  if (looksWrapped(body)) return false;
+  const all = blocks(body);
+  const multi = all.filter((lines) => lines.length >= 2).length;
+  return all.length > 0 && multi / all.length >= 0.5;
+}
+
+/**
+ * A poem as one piece. Cutting it at every stanza would stop you where the
+ * poem does not stop, so the blank line between stanzas stays in the text and
+ * is typed as a second Enter.
+ */
+function wholePoem(body: string): string {
+  return blocks(body)
+    .map((lines) => lines.join("\n"))
+    .join("\n\n");
+}
+
 /** Everything the library needs from one raw file. */
 export function prepare(raw: string, joinLines: boolean): PreparedText {
-  const { title, body } = extractTitle(clean(raw));
-  return { title, chunks: toChunks(body, joinLines), wrapped: looksWrapped(body) };
+  const { title, body } = extractHeader(clean(raw));
+  const verse = !joinLines && looksLikeVerse(body);
+  const chunks = verse ? [wholePoem(body)] : toChunks(body, joinLines);
+  return { title, chunks, wrapped: looksWrapped(body), verse };
 }

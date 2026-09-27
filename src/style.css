@@ -231,7 +231,8 @@ select {
  * stay exactly one character wide -- the scroll offset is `cursor * 1ch`, so a
  * margin here would walk the caret off the text.
  */
-.stream-strip .break {
+.stream-strip .break,
+.verse-row .break {
   opacity: 0.55;
 }
 
@@ -249,6 +250,14 @@ select {
   color: var(--ink);
   border-color: var(--accent);
   filter: none;
+}
+
+/* A link dressed as the row's other side buttons, so the row reads as one. */
+.entry-source {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  text-decoration: none;
 }
 
 /* Only imported texts have one: the repo folder is edited in the repo. */
@@ -357,16 +366,82 @@ button.secondary {
   background: var(--bad);
 }
 
-.stream-strip .done {
+.stream-strip .done,
+.verse-row .done {
   color: var(--ink);
 }
 
-.stream-strip .pending {
+.stream-strip .pending,
+.verse-row .pending {
   color: var(--muted);
 }
 
-.stream-strip .wrong {
+.stream-strip .wrong,
+.verse-row .wrong {
   color: var(--bad);
+}
+
+/*
+ * Verse: one row per line, the current one held in the middle. Seven rows is
+ * three either side -- enough to read the line in its place, few enough that
+ * the current one stays the obvious thing on screen.
+ */
+.stream.verse {
+  padding: 18px 0;
+  /* The rows size their type from this box, so a long line fits rather than
+     being cut: see --cols in verse.ts. */
+  container-type: inline-size;
+}
+
+.verse-window {
+  --row-h: 1.9em;
+  font-size: min(1em, calc((100cqw - 48px) / (var(--cols, 40) * 0.62)));
+  height: calc(7 * var(--row-h));
+  overflow: hidden;
+}
+
+.verse-lines {
+  padding-top: calc(3 * var(--row-h));
+  transform: translateY(calc(var(--row, 0) * -1 * var(--row-h)));
+  transition: transform 160ms ease-out;
+}
+
+.verse-row {
+  height: var(--row-h);
+  line-height: var(--row-h);
+  padding: 0 24px;
+  white-space: pre;
+  opacity: 0.55;
+  transition: opacity 160ms ease-out;
+}
+
+.verse-row.is-past {
+  opacity: 0.6;
+}
+
+.verse-row.context {
+  color: var(--muted);
+  opacity: 0.4;
+}
+
+/* The line being typed: full strength, a tint, and a bar in the margin. */
+.verse-row.is-current {
+  opacity: 1;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* The caret sits on the cell to type, drawn as a bar so nothing shifts. */
+.verse-row .at-caret {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.stream.is-error .verse-row .at-caret {
+  box-shadow: inset 2px 0 0 var(--bad);
+}
+
+.stream.is-error .verse-row.is-current {
+  box-shadow: inset 3px 0 0 var(--bad);
 }
 
 /*
@@ -519,7 +594,9 @@ button.secondary {
 
 /* The whole app is a keyboard app; motion is decoration and goes first. */
 @media (prefers-reduced-motion: reduce) {
-  .stream-strip {
+  .stream-strip,
+  .verse-lines,
+  .verse-row {
     transition: none;
   }
 }

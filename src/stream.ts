@@ -6,7 +6,7 @@
  * `element`, and changes only through `update()`.
  */
 
-import type { TypingSession } from "./typing";
+import type { Cell, TypingSession } from "./typing";
 
 /** A wrongly typed space needs a body, or the red run has an invisible gap. */
 const SPACE_MARKER = "·";
@@ -17,6 +17,22 @@ const SPACE_MARKER = "·";
  * a real newline, which `white-space: pre` would act on.
  */
 const BREAK_MARKER = "↵";
+
+/**
+ * Draw one position. Shared with the verse view, so a cell looks and reads the
+ * same whichever way the text is laid out.
+ */
+export function paintCell(span: HTMLSpanElement, cell: Cell, extra = ""): void {
+  // Show what was actually pressed at a wrong position: seeing the letter you
+  // produced is what tells you which one to delete.
+  let text = cell.state === "wrong" ? (cell.typed ?? cell.expected) : cell.expected;
+  if (text === "\n") text = BREAK_MARKER;
+  else if (cell.state === "wrong" && text === " ") text = SPACE_MARKER;
+  let className = cell.expected === "\n" ? `${cell.state} break` : cell.state;
+  if (extra !== "") className += ` ${extra}`;
+  if (span.textContent !== text) span.textContent = text;
+  if (span.className !== className) span.className = className;
+}
 
 export class TypeLine {
   readonly element: HTMLDivElement;
@@ -62,18 +78,8 @@ export class TypeLine {
     }
 
     for (let i = 0; i < count; i += 1) {
-      const cell = session.cellAt(i);
       const span = this.cells[i];
-      if (span === undefined) continue;
-      // Show what was actually pressed at a wrong position: seeing the letter
-      // you produced is what tells you which one to delete.
-      const shown = cell.state === "wrong" ? (cell.typed ?? cell.expected) : cell.expected;
-      let text = shown;
-      if (text === "\n") text = BREAK_MARKER;
-      else if (cell.state === "wrong" && text === " ") text = SPACE_MARKER;
-      const className = cell.expected === "\n" ? `${cell.state} break` : cell.state;
-      if (span.textContent !== text) span.textContent = text;
-      if (span.className !== className) span.className = className;
+      if (span !== undefined) paintCell(span, session.cellAt(i));
     }
 
     // The caret is fixed in the window, so the strip is what moves. `ch` units

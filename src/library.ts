@@ -10,7 +10,7 @@
 
 import type { Lang } from "./layouts";
 import type { ImportedText } from "./storage";
-import { clean, extractTitle } from "./text";
+import { clean, extractHeader } from "./text";
 
 /** Where a text came from, which decides whether the world can see it. */
 export type Source = "repo" | "local" | "imported";
@@ -22,6 +22,8 @@ export interface TextEntry {
   readonly lang: Lang;
   readonly source: Source;
   readonly raw: string;
+  /** Where the text was taken from, from its `Source:` line, or null. */
+  readonly link: string | null;
   /** True when the file did not arrive as readable UTF-8 text. */
   readonly broken: boolean;
 }
@@ -69,8 +71,16 @@ export function entryFromPath(path: string, raw: string, source: Source): TextEn
   const lang = langFromPath(path);
   if (lang === null) return null;
   const broken = looksBinary(raw);
-  const heading = broken ? null : extractTitle(clean(raw)).title;
-  return { id: path, title: heading ?? titleFromPath(path), lang, source, raw, broken };
+  const header = broken ? null : extractHeader(clean(raw));
+  return {
+    id: path,
+    title: header?.title ?? titleFromPath(path),
+    lang,
+    source,
+    raw,
+    link: header?.source ?? null,
+    broken,
+  };
 }
 
 /** An entry for a text the user dropped into the browser instead of the repo. */
@@ -81,6 +91,7 @@ export function entryFromImport(text: ImportedText): TextEntry {
     lang: text.lang,
     source: "imported",
     raw: text.raw,
+    link: looksBinary(text.raw) ? null : extractHeader(clean(text.raw)).source,
     broken: looksBinary(text.raw),
   };
 }

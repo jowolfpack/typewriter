@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clean, extractTitle, looksWrapped, prepare, toChunks } from "./text";
+import { clean, extractHeader, looksWrapped, prepare, toChunks } from "./text";
 
 /** A stanza, as a poem is actually written. */
 const PANTHER = [
@@ -39,15 +39,30 @@ describe("clean", () => {
   });
 });
 
-describe("extractTitle", () => {
+describe("extractHeader", () => {
   it("takes a leading heading and removes it from the body", () => {
-    const { title, body } = extractTitle("# Die Verwandlung\nAls Gregor...");
+    const { title, body } = extractHeader("# Die Verwandlung\nAls Gregor...");
     expect(title).toBe("Die Verwandlung");
     expect(body).toBe("Als Gregor...");
   });
 
   it("leaves a text with no heading alone", () => {
-    expect(extractTitle("Als Gregor...").title).toBeNull();
+    expect(extractHeader("Als Gregor...").title).toBeNull();
+  });
+
+  it("takes a source link under the heading and keeps it out of the typing", () => {
+    const { title, source, body } = extractHeader(
+      "# Der Zauberlehrling\nSource: https://de.wikisource.org/wiki/X\n\nHat der alte Hexenmeister",
+    );
+    expect(title).toBe("Der Zauberlehrling");
+    expect(source).toBe("https://de.wikisource.org/wiki/X");
+    expect(body).toBe("\nHat der alte Hexenmeister");
+  });
+
+  it("only treats a web address as a source, never a line of the text", () => {
+    const { source, body } = extractHeader("Source: of all my troubles\nwas you");
+    expect(source).toBeNull();
+    expect(body).toBe("Source: of all my troubles\nwas you");
   });
 });
 
@@ -121,5 +136,23 @@ describe("prepare", () => {
     const prepared = prepare(WRAPPED, true);
     expect(prepared.chunks[0]).not.toContain("\n");
     expect(prepared.chunks[0]).toContain("wished to live deliberately");
+  });
+
+  it("keeps a poem in one piece, the blank line between stanzas included", () => {
+    const poem = "# T\n\none a\none b\n\n\ntwo a\ntwo b\n";
+    const prepared = prepare(poem, false);
+    expect(prepared.verse).toBe(true);
+    expect(prepared.chunks).toEqual(["one a\none b\n\ntwo a\ntwo b"]);
+  });
+
+  it("does not take prose with one paragraph per line for a poem", () => {
+    const prose = "First paragraph.\n\nSecond paragraph.\n\nThird.";
+    const prepared = prepare(prose, false);
+    expect(prepared.verse).toBe(false);
+    expect(prepared.chunks).toHaveLength(3);
+  });
+
+  it("splits a wrapped file into parts even with its lines kept", () => {
+    expect(prepare(WRAPPED, false).verse).toBe(false);
   });
 });

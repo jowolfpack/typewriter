@@ -246,6 +246,90 @@ describe("the interface", () => {
   });
 });
 
+describe("a poem", () => {
+  function openPoem(): void {
+    const lang = byId<HTMLSelectElement>("lang");
+    lang.value = "de";
+    lang.dispatchEvent(new Event("change"));
+    open("text-list", "Der Zauberlehrling");
+  }
+
+  function rows(): HTMLElement[] {
+    return [...document.querySelectorAll<HTMLElement>(".verse-row:not(.context):not(.gap)")];
+  }
+
+  function enter(): void {
+    // A one-line field never holds a newline: Enter arrives as a key.
+    byId("capture").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }),
+    );
+  }
+
+  it("links to where the text came from", () => {
+    const lang = byId<HTMLSelectElement>("lang");
+    lang.value = "de";
+    lang.dispatchEvent(new Event("change"));
+    const link = byId("text-list").querySelector<HTMLAnchorElement>("a.entry-source");
+    expect(link?.href).toContain("de.wikisource.org");
+    expect(link?.rel).toContain("noopener");
+  });
+
+  it("is the whole poem in one piece, laid out line by line", () => {
+    openPoem();
+    expect(document.querySelector(".stream-strip")).toBeNull();
+    const lines = rows().map((row) => (row.textContent ?? "").replace("↵", ""));
+    expect(lines[0]).toBe("Hat der alte Hexenmeister");
+    // 98 verse lines and the 13 blank lines between the 14 stanzas.
+    expect(lines).toHaveLength(98 + 13);
+    expect(lines[8]).toBe("");
+    expect(lines.at(-1)).toBe("Erst hervor der alte Meister.“");
+    expect(rows()[0]?.classList.contains("is-current")).toBe(true);
+    expect(byId("typing-meta").textContent).toContain("line 1 of 98");
+  });
+
+  it("types the blank line between stanzas as a second Enter", () => {
+    openPoem();
+    const first = [
+      "Hat der alte Hexenmeister",
+      "Sich doch einmal wegbegeben!",
+      "Und nun sollen seine Geister",
+      "Auch nach meinem Willen leben.",
+      "Seine Wort’ und Werke",
+      "Merkt’ ich, und den Brauch,",
+      "Und mit Geistesstärke",
+      "Thu’ ich Wunder auch.",
+    ];
+    for (const verse of first) {
+      type(verse);
+      enter();
+    }
+    expect(rows()[8]?.classList.contains("is-current")).toBe(true);
+    enter();
+    expect(rows()[9]?.classList.contains("is-current")).toBe(true);
+    expect(byId("typing-meta").textContent).toContain("line 9 of 98");
+    expect(visible("type")).toBe(true);
+  });
+
+  it("moves the mark down when Enter ends a line", () => {
+    openPoem();
+    type("Hat der alte Hexenmeister");
+    enter();
+    expect(rows()[0]?.classList.contains("is-current")).toBe(false);
+    expect(rows()[0]?.classList.contains("is-past")).toBe(true);
+    expect(rows()[1]?.classList.contains("is-current")).toBe(true);
+    expect(rows()[1]?.querySelector(".at-caret")?.textContent).toBe("S");
+  });
+
+  it("still stops at a mistake and shows what was typed", () => {
+    openPoem();
+    type("Hat dex");
+    expect(byId("stream-slot").querySelector(".stream")?.classList.contains("is-error")).toBe(
+      true,
+    );
+    expect(rows()[0]?.querySelector(".wrong")?.textContent).toBe("x");
+  });
+});
+
 describe("a lesson", () => {
   it("only asks for keys the rung has unlocked", () => {
     open("lesson-list", "Home keys");

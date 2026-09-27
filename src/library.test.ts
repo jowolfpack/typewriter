@@ -7,6 +7,7 @@ import {
   looksBinary,
   titleFromPath,
 } from "./library";
+import { prepare } from "./text";
 
 describe("paths", () => {
   it("reads the language off the folder", () => {
@@ -48,6 +49,21 @@ describe("the bundled library", () => {
     const paths = bundledTexts().map((entry) => entry.id);
     expect(paths).toContain("/texts/de/die-verwandlung.txt");
     expect(paths).toContain("/texts/en/walden.txt");
+  });
+
+  /**
+   * A poem copied from memory gets its punctuation and its line endings wrong,
+   * and those are the poem. So every published one says which edition it is.
+   */
+  it("gives every published poem a source link", () => {
+    const poems = bundledTexts().filter((entry) => {
+      if (entry.source !== "repo" || entry.broken) return false;
+      return prepare(entry.raw, false).verse;
+    });
+    expect(poems.map((entry) => entry.id)).toContain("/texts/de/der-zauberlehrling.txt");
+    for (const poem of poems) {
+      expect(poem.link, poem.id).toMatch(/^https:\/\//);
+    }
   });
 
   it("shows only the chosen language, sorted, with imports mixed in", () => {

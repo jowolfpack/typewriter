@@ -14,7 +14,8 @@ import {
 } from "./storage";
 import type { Theme } from "./storage";
 import { TypeLine } from "./stream";
-import { clean, extractTitle, prepare } from "./text";
+import { VerseLines } from "./verse";
+import { clean, extractHeader, prepare } from "./text";
 import { applyTheme, initTheme } from "./theme";
 import { TypingSession, keyFor } from "./typing";
 
@@ -88,7 +89,14 @@ let session: TypingSession | null = null;
 let metrics: Metrics | null = null;
 let finished: Snapshot | null = null;
 
-const line = new TypeLine();
+const strip = new TypeLine();
+const verse = new VerseLines();
+/**
+ * Which of the two is on screen. A part with line breaks in it is verse -- or
+ * prose whose lines the reader chose to keep -- and gets rows; everything else,
+ * drills included, gets the scrolling strip.
+ */
+let line: TypeLine | VerseLines = strip;
 
 const wpmChart = new TrendChart({
   label: "Words per minute",
@@ -133,11 +141,14 @@ function renderHome(): void {
       const parts = prepared?.chunks.length ?? 0;
       const note = entry.broken
         ? "not UTF-8"
-        : position > 0
-          ? `part ${position + 1} of ${parts}`
-          : `${parts} parts`;
+        : prepared?.verse === true
+          ? `${verseLines(prepared.chunks[0] ?? "")} lines`
+          : position > 0
+            ? `part ${position + 1} of ${parts}`
+            : `${parts} parts`;
       const row = entryRow(entry.title, note, entry.broken, () => startText(entry));
       if (prepared?.wrapped === true) row.append(linesButton(entry.id, joined));
+      if (entry.link !== null) row.append(sourceLink(entry.link));
       if (entry.source === "imported") row.append(removeButton(entry));
       return row;
     }),
@@ -186,6 +197,26 @@ function entryRow(
   row.className = "entry-row";
   row.append(button);
   return row;
+}
+
+/** Verse lines in a poem, not counting the blank lines between stanzas. */
+function verseLines(text: string): number {
+  return text.split("\n").filter((row) => row !== "").length;
+}
+
+/**
+ * Where the text was taken from. A copy can be wrong, and a wrong word is one
+ * you practise a hundred times, so the edition is one click away.
+ */
+function sourceLink(url: string): HTMLAnchorElement {
+  const link = document.createElement("a");
+  link.className = "entry-aside entry-source";
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = "source";
+  link.title = url;
+  return link;
 }
 
 /**
@@ -238,7 +269,11 @@ function renderMeta(): void {
   if (metrics === null || session === null) return;
   const snap = metrics.snapshot();
   const where =
-    activity?.kind === "text" ? `part ${activity.index + 1} of ${activity.chunks.length}` : "drill";
+    activity?.kind !== "text"
+      ? "drill"
+      : line === verse && activity.chunks.length === 1
+        ? `line ${verseLines(session.target.slice(0, session.cursor + 1))} of ${verseLines(session.target)}`
+        : `part ${activity.index + 1} of ${activity.chunks.length}`;
   ui.typingMeta.replaceChildren(
     ...[
       `${Math.round(snap.wpm)} wpm`,
@@ -274,7 +309,12 @@ function renderHint(): void {
 function renderDone(): void {
   if (finished === null) return;
   const more = activity?.kind === "text" && activity.index + 1 < activity.chunks.length;
-  ui.doneTitle.textContent = activity?.kind === "lesson" ? "Drill finished" : "Part finished";
+  ui.doneTitle.textContent =
+    activity?.kind === "lesson"
+      ? "Drill finished"
+      : activity?.chunks.length === 1
+        ? "Finished"
+        : "Part finished";
   ui.summary.textContent = `${Math.round(finished.wpm)} wpm · ${(finished.accuracy * 100).toFixed(1)}%`;
   ui.doneDetail.textContent = `${finished.correct + finished.errors} characters in ${formatDuration(finished.ms)}, ${finished.errors} of them wrong the first time.`;
   ui.nextChunk.hidden = !more && activity?.kind === "text";
@@ -397,8 +437,17 @@ function begin(): void {
   metrics = new Metrics();
   finished = null;
   view = "type";
+  line = text.includes("\n") ? verse : strip;
+  ui.streamSlot.replaceChildren(line.element);
   render();
-  line.reset(session);
+  if (line === verse && activity.kind === "text") {
+    verse.reset(session, {
+      before: activity.chunks[activity.index - 1] ?? "",
+      after: activity.chunks[activity.index + 1] ?? "",
+    });
+  } else {
+    line.reset(session);
+  }
   focusCapture();
 }
 
@@ -627,7 +676,7 @@ async function addText(file: File): Promise<void> {
   }
   const raw = await file.text();
   const id = `imported:${file.name}`;
-  const title = extractTitle(clean(raw)).title ?? titleFromPath(file.name);
+  const title = extractHeader(clean(raw)).title ?? titleFromPath(file.name);
   updateProfile((draft) => {
     draft.imported = draft.imported.filter((text) => text.id !== id);
     draft.imported.push({ id, title, lang, raw });
@@ -658,7 +707,7 @@ function boot(): void {
   ui.theme.value = settings.theme();
   ui.lang.value = lang;
   ui.statsToggle.checked = settings.stats();
-  ui.streamSlot.replaceChildren(line.element);
+  ui.streamSlot.replaceChildren(strip.element);
   ui.charts.replaceChildren(wpmChart.element, accuracyChart.element);
   wire();
   render();

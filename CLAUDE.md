@@ -55,8 +55,15 @@ in the folder appears with no registry to edit. Vite resolves it at build time,
 so the published site is still a plain static bundle.
 
 The folder sets the language (`texts/de/...` is German); a leading `# Title`
-line names the text, otherwise the filename does. `texts-local/` is gitignored,
-so those texts work locally and are never published.
+line names the text, otherwise the filename does. An optional `Source: <url>`
+line under it links the edition, shown as "source" in the library; a test
+fails if a published poem lacks one. `texts-local/` is gitignored, so those
+texts work locally and are never published.
+
+**Never write a text from memory.** Download it (Wikisource, Projekt Gutenberg,
+Deutsches Textarchiv), strip only the markup, and keep the edition's spelling,
+punctuation and line breaks exactly -- those are the poem. Link the exact
+revision.
 
 **The text is never rewritten.** An earlier version replaced curly quotes,
 dashes and ellipses with ASCII lookalikes so every character was reachable.
@@ -73,7 +80,10 @@ glyph and no key, which reads as the line refusing your keystroke.
 **Line breaks are kept**, because a poem's lineation is the poem. A newline is
 an ordinary position, typed with Enter and drawn as a dim `\u21b5`; it must
 never reach the DOM as a real newline, which `white-space: pre` would act on.
-Blank lines still separate chunks, so a stanza or a paragraph is one part.
+In prose, blank lines separate chunks, so a paragraph is one part. **A poem is
+never split** (`looksLikeVerse()`: most blocks several lines long, not
+wrapped): it is one chunk, and the blank line between stanzas stays in it as a
+second Enter. Do not cut poems at stanzas again -- the user asked for this.
 
 Hard-wrapped prose (Project Gutenberg wraps at ~70 characters) would otherwise
 put an Enter mid-sentence that the author never wrote. `looksWrapped()` spots it
@@ -101,6 +111,14 @@ would drop cells off the front and move the line with no transition to carry it,
 and `text.ts` caps a chunk at a few hundred characters anyway. A wrong cell shows
 **what was typed**, not what was expected, because that is what tells you which
 letter to delete.
+
+**Verse (`src/verse.ts`)** -- a part containing `\n` is typed as rows instead:
+one row per line, the current one marked and held fourth of seven, earlier
+lines above, later ones below, and the neighbouring parts dimmed as context.
+The type shrinks via `--cols` and container units until the longest line fits,
+so a verse line is never cut or scrolled sideways -- still nothing measured.
+`paintCell()` in `stream.ts` draws a cell for both views; `main.ts` picks the
+view per part in `begin()`.
 
 **Input (`src/main.ts`)** -- characters come from the capture field's value, not
 from `keydown`. A dead key (`´` then `e`) and an AltGr combination both report as
