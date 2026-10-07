@@ -8,7 +8,7 @@
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prepare } from "./text";
 
 // Not import.meta.url: under the jsdom environment that is an http URL.
@@ -108,6 +108,10 @@ beforeEach(async () => {
   await boot();
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("screens", () => {
   /**
    * `section { display: grid }` outranks the browser's `[hidden]` rule, which
@@ -198,9 +202,21 @@ describe("typing a text", () => {
   });
 
   it("finishes on an exact match and reports the session", () => {
+    vi.useFakeTimers();
     open("text-list", PRACTICE_TITLE);
     type(firstChunk());
 
+    // First a pause with the finished text still on screen, and no numbers.
+    expect(visible("type")).toBe(true);
+    expect(visible("finale")).toBe(true);
+    expect(byId("finale").textContent).not.toBe("");
+    expect(visible("typing-meta")).toBe(false);
+    expect(visible("done")).toBe(false);
+    // Input is over: a stray key does not change anything.
+    type("x");
+    expect(cells().every((cell) => cell.state === "done")).toBe(true);
+
+    vi.advanceTimersByTime(5000);
     expect(visible("done")).toBe(true);
     expect(byId("summary").textContent).toMatch(/wpm/);
     const stored = localStorage.getItem("typewriter:profile") ?? "";
@@ -221,6 +237,18 @@ describe("typing a text", () => {
     await import("./main");
     const again = entries("text-list").find((b) => b.textContent?.includes(PRACTICE_TITLE) === true);
     expect(again?.textContent).toContain("part 2 of");
+  });
+
+  it("does not pop the summary up after leaving during the pause", () => {
+    vi.useFakeTimers();
+    open("text-list", PRACTICE_TITLE);
+    type(firstChunk());
+    byId("capture").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+    );
+    vi.advanceTimersByTime(5000);
+    expect(visible("home")).toBe(true);
+    expect(visible("done")).toBe(false);
   });
 
   it("goes back to the library on Escape", () => {
@@ -394,12 +422,14 @@ describe("a poem by heart", () => {
   });
 
   it("finishes with the punctuation left out", () => {
+    vi.useFakeTimers();
     openByHeart();
     for (const line of ["Ein Vers der steht", "ein zweiter hier", "", "Und dann der Schluss"]) {
       type(line);
       key("Enter");
     }
     type("ganz kurz");
+    vi.advanceTimersByTime(5000);
     expect(visible("done")).toBe(true);
     expect(byId("summary").textContent).toContain("100.0%");
   });

@@ -45,6 +45,7 @@ const ui = {
   streamSlot: el("stream-slot"),
   typingMeta: el("typing-meta"),
   typeHint: el("type-hint"),
+  finale: el("finale"),
   capture: el<HTMLInputElement>("capture"),
 
   done: el("done"),
@@ -79,6 +80,38 @@ type Activity =
 /** A browser-held text over this size belongs in the repo folder instead. */
 const MAX_IMPORT_BYTES = 300_000;
 
+/**
+ * How long the finished text stays on screen before the numbers. Going
+ * straight from the last keystroke to a score makes every exercise end on a
+ * verdict; a moment with the text you just typed ends it on the text.
+ */
+const FINISH_PAUSE_MS = 5000;
+
+/**
+ * What the pause says, one picked at random. Verbatim as the owner wrote them,
+ * spelling, casing and language included -- the one deliberate exception to
+ * the English-only interface. Do not tidy them.
+ */
+const FINALES = [
+  "finito bambini",
+  "senior, you are done",
+  "great job, keep pushing",
+  "per aspera ad astra",
+  "es ist noch kein meister vom himmel gefallen",
+  "morgen würdest du dir wünschen, du hättest heute mehr getippt",
+  "...und du tippst dich zum glück",
+] as const;
+
+let lastFinale = -1;
+
+/** A random line, never the same one twice running. */
+function pickFinale(): string {
+  let index = Math.floor(Math.random() * FINALES.length);
+  if (index === lastFinale) index = (index + 1) % FINALES.length;
+  lastFinale = index;
+  return FINALES[index] ?? "";
+}
+
 /** Accuracy that marks a lesson as cleared. Nothing is ever locked. */
 const LESSON_PASS = 0.97;
 
@@ -88,6 +121,8 @@ let activity: Activity | null = null;
 let session: TypingSession | null = null;
 let metrics: Metrics | null = null;
 let finished: Snapshot | null = null;
+/** The pending switch from the finished text to the summary, if any. */
+let pause: ReturnType<typeof setTimeout> | null = null;
 
 const strip = new TypeLine();
 const verse = new VerseLines();
@@ -276,7 +311,9 @@ function removeButton(entry: TextEntry): HTMLButtonElement {
 }
 
 function renderTyping(): void {
-  ui.typingMeta.hidden = !settings.stats();
+  ui.finale.hidden = pause === null;
+  // The numbers wait for the summary too; the pause is for the text alone.
+  ui.typingMeta.hidden = !settings.stats() || pause !== null;
   if (session !== null) line.update(session);
   renderMeta();
   renderHint();
@@ -311,6 +348,10 @@ function renderMeta(): void {
 let capsLock = false;
 
 function renderHint(): void {
+  if (pause !== null) {
+    ui.typeHint.textContent = "";
+    return;
+  }
   if (capsLock) {
     ui.typeHint.textContent = "Caps Lock is on.";
     return;
@@ -454,6 +495,7 @@ function startLesson(lesson: Lesson): void {
 }
 
 function begin(): void {
+  cancelPause();
   if (activity === null) return;
   const text =
     activity.kind === "text" ? (activity.chunks[activity.index] ?? "") : drillFor(activity.lesson);
@@ -533,9 +575,25 @@ function finish(): void {
     });
   }
 
+  // The text stays as typed -- `session` is gone, so input is ignored, but the
+  // line is left exactly as it was drawn.
   session = null;
-  view = "done";
+  ui.finale.textContent = pickFinale();
+  pause = setTimeout(() => {
+    pause = null;
+    // Somewhere else by now (History, say): the summary would land on top of it.
+    if (view !== "type") return;
+    view = "done";
+    render();
+  }, FINISH_PAUSE_MS);
   render();
+}
+
+/** Leaving during the pause must not have the summary pop up afterwards. */
+function cancelPause(): void {
+  if (pause === null) return;
+  clearTimeout(pause);
+  pause = null;
 }
 
 function continueOn(): void {
@@ -552,6 +610,7 @@ function continueOn(): void {
 }
 
 function toLibrary(): void {
+  cancelPause();
   activity = null;
   session = null;
   metrics = null;

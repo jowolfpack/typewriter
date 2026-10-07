@@ -138,8 +138,16 @@ from `keydown`. A dead key (`´` then `e`) and an AltGr combination both report 
 modifier keys in `keydown` and only become a letter once the field has them;
 `compositionend` covers the composing case. `keydown` handles only Backspace
 (preventDefault, or an empty field navigates back), Enter (a single-line field
-never sees it), Tab (the by-heart hint), Escape and Caps Lock detection. This is the single most likely place a German keyboard breaks, so
-test umlauts and `ß` on real hardware, not only in jsdom.
+never sees it), Tab (the by-heart hint), Escape and Caps Lock detection. This
+is the single most likely place a German keyboard breaks, so test umlauts and
+`ß` on real hardware, not only in jsdom.
+
+**Finishing** -- the summary does not appear on the last keystroke. For
+`FINISH_PAUSE_MS` (5s, the user's choice) the finished text stays on screen
+under one line picked at random from `FINALES` in `main.ts`, with the live
+numbers hidden and input ignored; then the summary. The session is recorded at
+once, so leaving during the pause loses nothing, and leaving cancels the timer
+so the summary never lands on another screen.
 
 There is no letter-key shortcut for hiding the statistics. In an app where every
 letter is input, a letter cannot also be a command -- the header toggle is it.
@@ -185,6 +193,8 @@ one. The forks pool times out starting a jsdom worker on Windows, so
 - `vite.config.ts` sets `base: "./"` so `dist/` works from any subpath.
 - UI text is English, always, including when the request was written in German.
   The language switch changes the content and the layout, never the interface.
+  The one exception is `FINALES`, the owner's own lines for the end-of-text
+  pause: kept verbatim in their mixed languages and casing, on request.
 - Texts in `texts/` are published. Public-domain or your own only; everything
   else belongs in `texts-local/` or in browser import. **Only texts the user
   names go in** -- never add one on your own initiative, not even as a sample.

@@ -490,6 +490,25 @@ button.secondary {
   display: none;
 }
 
+/* The pause after the last keystroke: one quiet word over the finished text. */
+.finale {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(1.4rem, 5vw, 1.9rem);
+  color: var(--ok);
+  animation: finale-in 600ms ease-out;
+}
+
+.finale[hidden] {
+  display: none;
+}
+
+@keyframes finale-in {
+  from {
+    opacity: 0;
+  }
+}
+
 .summary {
   margin: 0;
   font-size: clamp(1.4rem, 5vw, 1.9rem);
@@ -613,5 +632,9 @@ button.secondary {
   .verse-lines,
   .verse-row {
     transition: none;
+  }
+
+  .finale {
+    animation: none;
   }
 }
