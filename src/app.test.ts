@@ -343,6 +343,85 @@ describe("a poem", () => {
   });
 });
 
+describe("a poem by heart", () => {
+  /** The test's own verse, not one from `texts/`: two stanzas, punctuation on purpose. */
+  const POEM = [
+    "Ein Vers, der steht;",
+    "ein zweiter — hier.",
+    "",
+    "„Und dann der Schluss,",
+    "ganz kurz.“",
+  ].join("\n");
+
+  function openByHeart(): void {
+    localStorage.setItem(
+      "typewriter:profile",
+      JSON.stringify({
+        version: 1,
+        imported: [{ id: "imported:verse", title: "Test Verse", lang: "de", raw: POEM }],
+      }),
+    );
+    const lang = byId<HTMLSelectElement>("lang");
+    lang.value = "de";
+    lang.dispatchEvent(new Event("change"));
+    const row = entries("text-list")
+      .find((button) => button.textContent?.includes("Test Verse") === true)
+      ?.closest("li");
+    const button = [...(row?.querySelectorAll("button") ?? [])].find(
+      (candidate) => candidate.textContent === "by heart",
+    );
+    if (button === undefined) throw new Error("No by-heart button on the poem");
+    button.click();
+  }
+
+  function key(name: string): void {
+    byId("capture").dispatchEvent(
+      new KeyboardEvent("keydown", { key: name, bubbles: true, cancelable: true }),
+    );
+  }
+
+  function pending(): HTMLElement[] {
+    return [...document.querySelectorAll<HTMLElement>(".verse-row .pending")];
+  }
+
+  it("hides everything not yet typed", () => {
+    openByHeart();
+    expect(byId("title").textContent).toContain("by heart");
+    expect(pending().length).toBeGreaterThan(0);
+    for (const cell of pending()) {
+      expect(["transparent", "rgba(0, 0, 0, 0)"]).toContain(getComputedStyle(cell).color);
+    }
+  });
+
+  it("finishes with the punctuation left out", () => {
+    openByHeart();
+    for (const line of ["Ein Vers der steht", "ein zweiter hier", "", "Und dann der Schluss"]) {
+      type(line);
+      key("Enter");
+    }
+    type("ganz kurz");
+    expect(visible("done")).toBe(true);
+    expect(byId("summary").textContent).toContain("100.0%");
+  });
+
+  it("still requires Enter where a line ends", () => {
+    openByHeart();
+    type("Ein Vers der steht ein");
+    expect(byId("stream-slot").querySelector(".stream")?.classList.contains("is-error")).toBe(
+      true,
+    );
+  });
+
+  it("shows the next word on Tab and counts it", () => {
+    openByHeart();
+    key("Tab");
+    const hinted = [...document.querySelectorAll(".verse-row .hinted")].map((c) => c.textContent);
+    expect(hinted.join("")).toBe("Ein");
+    expect(byId("typing-meta").textContent).toContain("3 hinted");
+    expect(byId("type-hint").textContent).toContain("Tab");
+  });
+});
+
 describe("a lesson", () => {
   it("only asks for keys the rung has unlocked", () => {
     open("lesson-list", "Home keys");

@@ -30,6 +30,8 @@ export interface Snapshot {
   readonly accuracy: number;
   readonly correct: number;
   readonly errors: number;
+  /** Of the errors, how many were positions revealed by a hint. */
+  readonly hints: number;
   readonly ms: number;
 }
 
@@ -38,6 +40,7 @@ export class Metrics {
   private readonly judged = new Set<number>();
   private correct = 0;
   private errors = 0;
+  private hints = 0;
   private accumulated = 0;
   private last: number | null = null;
 
@@ -60,6 +63,21 @@ export class Metrics {
     key.attempts += 1;
     if (!correct) key.misses += 1;
     this.keys.set(expected, key);
+  }
+
+  /**
+   * Positions a hint revealed before they were typed. Each is a miss -- it was
+   * not known -- judged now, so typing it afterwards cannot turn it into a hit.
+   * No key is blamed: forgetting a word is not a finger's fault.
+   */
+  recordHint(indices: readonly number[]): void {
+    this.tick();
+    for (const index of indices) {
+      if (this.judged.has(index)) continue;
+      this.judged.add(index);
+      this.errors += 1;
+      this.hints += 1;
+    }
   }
 
   /**
@@ -94,6 +112,7 @@ export class Metrics {
       accuracy: attempted > 0 ? this.correct / attempted : 1,
       correct: this.correct,
       errors: this.errors,
+      hints: this.hints,
       ms,
     };
   }

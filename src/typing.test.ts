@@ -123,3 +123,165 @@ describe("TypingSession", () => {
     expect(session.done).toBe(true);
   });
 });
+
+describe("TypingSession by heart", () => {
+  const byHeart = (text: string) => new TypingSession(text, { optionalPunctuation: true });
+
+  it("fills in punctuation when the next letter is typed", () => {
+    const session = byHeart("Wind, und");
+    typeAll(session, "Wind und");
+    expect(session.isError).toBe(false);
+    expect(session.done).toBe(true);
+    expect(session.cellAt(4).state).toBe("skipped");
+  });
+
+  it("still accepts the punctuation when it is typed", () => {
+    const session = byHeart("Wind, und");
+    typeAll(session, "Wind, und");
+    expect(session.done).toBe(true);
+    expect(session.cellAt(4).state).toBe("done");
+  });
+
+  it("skips a mark together with its space, as before a dash", () => {
+    const session = byHeart("Gesicht? —\nSiehst");
+    typeAll(session, "Gesicht\nSiehst");
+    expect(session.isError).toBe(false);
+    expect(session.done).toBe(true);
+  });
+
+  it("skips opening quotes at the start of a line", () => {
+    const session = byHeart("„Du liebes Kind");
+    typeAll(session, "Du liebes Kind");
+    expect(session.done).toBe(true);
+  });
+
+  it("fills in punctuation after the last word", () => {
+    const session = byHeart("war tot.“ —");
+    typeAll(session, "war tot");
+    expect(session.done).toBe(true);
+  });
+
+  it("never skips a bare space -- that is where a word ends", () => {
+    const session = byHeart("Wind und");
+    typeAll(session, "Windu");
+    expect(session.isError).toBe(true);
+    expect(session.firstError).toBe(4);
+  });
+
+  it("never skips a line break", () => {
+    const session = byHeart("Arm,\nEr");
+    typeAll(session, "Arm E");
+    expect(session.isError).toBe(true);
+  });
+
+  it("does not skip anything in a red run", () => {
+    const session = byHeart("ab, cd");
+    typeAll(session, "ax");
+    session.type("c");
+    expect(session.cursor).toBe(3);
+  });
+
+  it("takes filled-in marks back out with the letter that brought them", () => {
+    const session = byHeart("Wind, und");
+    typeAll(session, "Wind u");
+    session.backspace();
+    session.backspace();
+    expect(session.cursor).toBe(4);
+    expect(session.cellAt(4).state).toBe("pending");
+  });
+
+  it("reports where the keystroke landed", () => {
+    const session = byHeart("a, b");
+    typeAll(session, "a ");
+    expect(session.judged).toEqual([{ index: 2, key: " ", correct: true }]);
+  });
+
+  it("skips punctuation before a ß typed as ss", () => {
+    const session = byHeart("„ßa");
+    typeAll(session, "ssa");
+    expect(session.done).toBe(true);
+  });
+
+  it("leaves punctuation strict without the option", () => {
+    const session = new TypingSession("Wind, und");
+    typeAll(session, "Wind ");
+    expect(session.isError).toBe(true);
+  });
+
+  it("reveals the next word on a hint and counts its letters", () => {
+    const session = byHeart("Mein Sohn, was");
+    typeAll(session, "Mein ");
+    expect(session.hint()).toEqual([5, 6, 7, 8]);
+    expect(session.cellAt(5).state).toBe("hinted");
+    expect(session.cellAt(9).state).toBe("hinted");
+    expect(session.cellAt(11).state).toBe("pending");
+  });
+
+  it("reveals a line break on its own", () => {
+    const session = byHeart("Arm\nEr");
+    typeAll(session, "Arm");
+    expect(session.hint()).toEqual([3]);
+  });
+
+  it("does not count a position twice when hinted again", () => {
+    const session = byHeart("eins zwei");
+    session.hint();
+    expect(session.hint()).toEqual([]);
+  });
+});
+
+describe("ß typed as ss", () => {
+  it("accepts ss for ß", () => {
+    const session = new TypingSession("daß er");
+    typeAll(session, "dass er");
+    expect(session.done).toBe(true);
+    expect(session.isError).toBe(false);
+  });
+
+  it("still accepts ß itself", () => {
+    const session = new TypingSession("daß");
+    typeAll(session, "daß");
+    expect(session.done).toBe(true);
+  });
+
+  it("waits after the first s without judging", () => {
+    const session = new TypingSession("daß");
+    typeAll(session, "das");
+    expect(session.cursor).toBe(2);
+    expect(session.done).toBe(false);
+    expect(session.judged).toEqual([]);
+    expect(session.cellAt(2)).toEqual({ expected: "ß", typed: "s", state: "done" });
+  });
+
+  it("counts a lone s as wrong and carries on after it", () => {
+    const session = new TypingSession("daß er");
+    typeAll(session, "das");
+    session.type(" ");
+    expect(session.firstError).toBe(2);
+    expect(session.cursor).toBe(4);
+    expect(session.judged).toEqual([
+      { index: 2, key: "s", correct: false },
+      { index: 3, key: " ", correct: true },
+    ]);
+    expect(session.cellAt(2)).toEqual({ expected: "ß", typed: "s", state: "wrong" });
+  });
+
+  it("takes ss back one s at a time", () => {
+    const session = new TypingSession("daß");
+    typeAll(session, "dass");
+    session.backspace();
+    expect(session.done).toBe(false);
+    expect(session.cellAt(2).typed).toBe("s");
+    session.backspace();
+    expect(session.cursor).toBe(2);
+    expect(session.cellAt(2).state).toBe("pending");
+    typeAll(session, "ss");
+    expect(session.done).toBe(true);
+  });
+
+  it("blames the s key, which is the one pressed", () => {
+    const session = new TypingSession("ß");
+    typeAll(session, "ss");
+    expect(session.judged).toEqual([{ index: 0, key: "s", correct: true }]);
+  });
+});

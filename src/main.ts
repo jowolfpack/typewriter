@@ -17,7 +17,7 @@ import { TypeLine } from "./stream";
 import { VerseLines } from "./verse";
 import { clean, extractHeader, prepare } from "./text";
 import { applyTheme, initTheme } from "./theme";
-import { TypingSession, keyFor } from "./typing";
+import { TypingSession } from "./typing";
 
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -73,7 +73,7 @@ type View = "home" | "type" | "done" | "history";
  * lesson is generated fresh each time, so there is nothing to remember.
  */
 type Activity =
-  | { kind: "text"; entry: TextEntry; chunks: string[]; index: number }
+  | { kind: "text"; entry: TextEntry; chunks: string[]; index: number; byHeart: boolean }
   | { kind: "lesson"; lesson: Lesson };
 
 /** A browser-held text over this size belongs in the repo folder instead. */
@@ -147,6 +147,7 @@ function renderHome(): void {
             ? `part ${position + 1} of ${parts}`
             : `${parts} parts`;
       const row = entryRow(entry.title, note, entry.broken, () => startText(entry));
+      if (prepared?.verse === true) row.append(byHeartButton(entry));
       if (prepared?.wrapped === true) row.append(linesButton(entry.id, joined));
       if (entry.link !== null) row.append(sourceLink(entry.link));
       if (entry.source === "imported") row.append(removeButton(entry));
@@ -220,6 +221,22 @@ function sourceLink(url: string): HTMLAnchorElement {
 }
 
 /**
+ * Learn a poem by heart: the same text with nothing ahead of the caret shown.
+ * Offered for verse only, where the lines give the hidden text a shape to
+ * remember it by.
+ */
+function byHeartButton(entry: TextEntry): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "entry-aside secondary";
+  button.textContent = "by heart";
+  button.title =
+    "Type it without seeing it. Punctuation may be left out; Tab shows the next word.";
+  button.addEventListener("click", () => startText(entry, true));
+  return button;
+}
+
+/**
  * Offered only when a file looks hard-wrapped at a margin. The guess is never
  * applied on its own: joining a poem would destroy its lineation, so the choice
  * is the reader's and it is visible on the row.
@@ -268,6 +285,7 @@ function renderTyping(): void {
 function renderMeta(): void {
   if (metrics === null || session === null) return;
   const snap = metrics.snapshot();
+  const byHeart = activity?.kind === "text" && activity.byHeart;
   const where =
     activity?.kind !== "text"
       ? "drill"
@@ -279,6 +297,7 @@ function renderMeta(): void {
       `${Math.round(snap.wpm)} wpm`,
       `${(snap.accuracy * 100).toFixed(0)}%`,
       `${snap.errors} ${snap.errors === 1 ? "error" : "errors"}`,
+      ...(byHeart ? [`${snap.hints} hinted`] : []),
       formatDuration(snap.ms),
       where,
     ].map((text) => {
@@ -303,7 +322,9 @@ function renderHint(): void {
   ui.typeHint.textContent =
     session?.isError === true
       ? "Delete back to the mistake to carry on."
-      : "Esc returns to the library.";
+      : activity?.kind === "text" && activity.byHeart
+        ? "Tab shows the next word. Esc returns to the library."
+        : "Esc returns to the library.";
 }
 
 function renderDone(): void {
@@ -316,7 +337,9 @@ function renderDone(): void {
         ? "Finished"
         : "Part finished";
   ui.summary.textContent = `${Math.round(finished.wpm)} wpm · ${(finished.accuracy * 100).toFixed(1)}%`;
-  ui.doneDetail.textContent = `${finished.correct + finished.errors} characters in ${formatDuration(finished.ms)}, ${finished.errors} of them wrong the first time.`;
+  const hinted =
+    finished.hints > 0 ? ` ${finished.hints} of those were shown by a hint.` : "";
+  ui.doneDetail.textContent = `${finished.correct + finished.errors} characters in ${formatDuration(finished.ms)}, ${finished.errors} of them wrong the first time.${hinted}`;
   ui.nextChunk.hidden = !more && activity?.kind === "text";
   ui.nextChunk.textContent = activity?.kind === "lesson" ? "New drill" : "Continue";
 }
@@ -408,19 +431,20 @@ function formatDuration(ms: number): string {
 
 function activityTitle(): string {
   if (activity === null) return "Typewriter";
-  return activity.kind === "text" ? activity.entry.title : activity.lesson.name;
+  if (activity.kind === "lesson") return activity.lesson.name;
+  return activity.byHeart ? `${activity.entry.title} · by heart` : activity.entry.title;
 }
 
 // -- Flow ---------------------------------------------------------------
 
-function startText(entry: TextEntry): void {
+function startText(entry: TextEntry, byHeart = false): void {
   const { chunks } = prepare(entry.raw, profile().joined[entry.id] ?? false);
   if (chunks.length === 0) return;
   const stored = profile().positions[entry.id] ?? 0;
   // A saved position can outlive the text it points into -- the file may have
   // been edited since, or normalising switched off and changed the chunking.
   const index = stored >= 0 && stored < chunks.length ? stored : 0;
-  activity = { kind: "text", entry, chunks, index };
+  activity = { kind: "text", entry, chunks, index, byHeart };
   begin();
 }
 
@@ -433,7 +457,8 @@ function begin(): void {
   if (activity === null) return;
   const text =
     activity.kind === "text" ? (activity.chunks[activity.index] ?? "") : drillFor(activity.lesson);
-  session = new TypingSession(text);
+  const byHeart = activity.kind === "text" && activity.byHeart;
+  session = new TypingSession(text, { optionalPunctuation: byHeart });
   metrics = new Metrics();
   finished = null;
   view = "type";
@@ -441,10 +466,15 @@ function begin(): void {
   ui.streamSlot.replaceChildren(line.element);
   render();
   if (line === verse && activity.kind === "text") {
-    verse.reset(session, {
-      before: activity.chunks[activity.index - 1] ?? "",
-      after: activity.chunks[activity.index + 1] ?? "",
-    });
+    verse.reset(
+      session,
+      {
+        // By heart, the neighbouring parts would give the game away.
+        before: byHeart ? "" : (activity.chunks[activity.index - 1] ?? ""),
+        after: byHeart ? "" : (activity.chunks[activity.index + 1] ?? ""),
+      },
+      byHeart,
+    );
   } else {
     line.reset(session);
   }
@@ -453,10 +483,12 @@ function begin(): void {
 
 function typeChar(ch: string): void {
   if (session === null || metrics === null) return;
-  const index = session.cursor;
-  const expected = session.expectedAt(index);
-  if (expected === "") return;
-  metrics.record(index, keyFor(expected), session.type(ch));
+  if (session.expectedAt(session.cursor) === "") return;
+  session.type(ch);
+  // Read the positions back rather than assuming the cursor: by heart, skipped
+  // punctuation can put the keystroke further along, and a `ß` typed as `ss`
+  // settles nothing on its first `s` and can settle two positions on the next.
+  for (const judged of session.judged) metrics.record(judged.index, judged.key, judged.correct);
 }
 
 /** One redraw after a burst of input, rather than one per character. */
@@ -583,6 +615,15 @@ function wire(): void {
       event.preventDefault();
       if (session === null) return;
       typeChar("\n");
+      afterInput();
+      return;
+    }
+    // Tab is not a character, so by heart it can ask for the next word without
+    // taking a key away from the text. Elsewhere it keeps moving focus.
+    if (event.key === "Tab" && activity?.kind === "text" && activity.byHeart) {
+      event.preventDefault();
+      if (session === null || metrics === null) return;
+      metrics.recordHint(session.hint());
       afterInput();
       return;
     }

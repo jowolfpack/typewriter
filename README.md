@@ -35,6 +35,14 @@ of not typing, so a pause is not punished. Accuracy judges each position by your
 
 `Esc` returns to the library.
 
+### Learning a poem by heart
+
+Poems have a **by heart** button in the library. The poem is hidden; you type
+it from memory and see only what you typed, red where it is wrong. Punctuation
+may be left out -- type the next letter and the mark fills itself in -- but
+words, capitals, spaces and line ends (Enter) must be right. Stuck? **Tab**
+shows the next word. A word shown by a hint counts as missed in your accuracy.
+
 ## Adding your own texts
 
 Put a `.txt` file in `texts/en/` or `texts/de/` -- the folder sets the language.
@@ -52,7 +60,8 @@ is part of the writing, and in a poem it is part of the art. Since a German or
 US keyboard cannot produce `„` or `—`, the app accepts the nearest key
 instead: `"` counts for `„` and `“`, `'` for `‘` and `’`,
 `-` for `–` and `—`, `.` for `…`. One keypress per character,
-and the line still shows the real one.
+and the line still shows the real one. The one exception: `ß` may be typed as
+`ss`, as the newer spelling rules write it.
 
 **Line breaks are kept too**, so verse keeps its lines. A break appears as a
 faint `↵` and you type it with Enter.

@@ -70,4 +70,18 @@ describe("Metrics", () => {
     expect(metrics.elapsedMs()).toBe(0);
     expect(metrics.snapshot().wpm).toBe(0);
   });
+
+  it("counts a hinted position as a miss that typing it cannot undo", () => {
+    const metrics = new Metrics(() => 0);
+    metrics.recordHint([0, 1]);
+    metrics.record(0, "a", true);
+    metrics.record(1, "b", true);
+    metrics.record(2, "c", true);
+    const snap = metrics.snapshot();
+    expect(snap.errors).toBe(2);
+    expect(snap.hints).toBe(2);
+    expect(snap.correct).toBe(1);
+    // A forgotten word is not a weak key.
+    expect(metrics.keyCounts().has("a")).toBe(false);
+  });
 });

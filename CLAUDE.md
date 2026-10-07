@@ -70,8 +70,11 @@ dashes and ellipses with ASCII lookalikes so every character was reachable.
 That is the wrong trade -- punctuation is part of the writing and in verse part
 of the art -- so the tolerance lives on the *input* side instead: `STAND_INS` in
 `typing.ts` accepts `"` for `„` and `-` for `—`, one keystroke per
-position, while the line still shows what the author wrote. Do not reintroduce
-normalisation of the text itself.
+position, while the line still shows what the author wrote. The one two-key
+exception is `ß` typed as `ss` (old vs. new spelling, and no `ß` key on a US
+board): the first `s` leaves the cell half done (`half`), the second settles it,
+and `judged` tells the statistics which positions a keystroke decided. Do not
+reintroduce normalisation of the text itself.
 
 `prepare()` only settles the encoding (BOM, NFC, CRLF) and removes genuinely
 invisible characters -- a zero-width space or soft hyphen is a cell with no
@@ -120,12 +123,22 @@ so a verse line is never cut or scrolled sideways -- still nothing measured.
 `paintCell()` in `stream.ts` draws a cell for both views; `main.ts` picks the
 view per part in `begin()`.
 
+**By heart** -- a poem's "by heart" button types it with nothing ahead of the
+caret drawn (`.by-heart`, pending cells transparent so widths hold). The user
+chose two leniencies for this mode only: punctuation is optional
+(`optionalPunctuation` in `TypingSession`: typing the letter after a mark, or
+after a mark and its space, fills the mark in; backspace takes filled marks out
+with that letter), and Tab reveals the next word. Spaces, capitals and Enter stay
+strict, and nothing is skipped inside a red run. A hinted position counts as a
+miss in accuracy (`recordHint`) but against no key. This is not the forbidden
+"skip": the ordinary typing mode stays exactly as strict as before.
+
 **Input (`src/main.ts`)** -- characters come from the capture field's value, not
 from `keydown`. A dead key (`´` then `e`) and an AltGr combination both report as
 modifier keys in `keydown` and only become a letter once the field has them;
 `compositionend` covers the composing case. `keydown` handles only Backspace
-(preventDefault, or an empty field navigates back), Escape and Caps Lock
-detection. This is the single most likely place a German keyboard breaks, so
+(preventDefault, or an empty field navigates back), Enter (a single-line field
+never sees it), Tab (the by-heart hint), Escape and Caps Lock detection. This is the single most likely place a German keyboard breaks, so
 test umlauts and `ß` on real hardware, not only in jsdom.
 
 There is no letter-key shortcut for hiding the statistics. In an app where every

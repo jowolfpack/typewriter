@@ -381,6 +381,21 @@ button.secondary {
   color: var(--bad);
 }
 
+/* Punctuation filled in for you, and words a hint gave away: there, but quiet. */
+.stream-strip .skipped,
+.verse-row .skipped,
+.verse-row .hinted {
+  color: var(--muted);
+}
+
+/*
+ * By heart: nothing ahead of the caret is drawn. Transparent rather than
+ * removed, so the cells keep their width and the caret bar stays put.
+ */
+.stream.by-heart .verse-row .pending {
+  color: transparent;
+}
+
 /*
  * Verse: one row per line, the current one held in the middle. Seven rows is
  * three either side -- enough to read the line in its place, few enough that

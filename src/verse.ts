@@ -42,8 +42,18 @@ export class VerseLines {
     this.element.append(window);
   }
 
-  /** Lay out a new part. Rows only change here, never per keystroke. */
-  reset(session: TypingSession, context: VerseContext = { before: "", after: "" }): void {
+  /**
+   * Lay out a new part. Rows only change here, never per keystroke.
+   *
+   * `byHeart` hides everything not yet typed -- the rows are still there, so
+   * the current line is still marked, but there is nothing on them to read.
+   */
+  reset(
+    session: TypingSession,
+    context: VerseContext = { before: "", after: "" },
+    byHeart = false,
+  ): void {
+    this.element.classList.toggle("by-heart", byHeart);
     const rows: HTMLDivElement[] = [];
     const before = splitRows(context.before);
     const after = splitRows(context.after);
