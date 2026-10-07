@@ -52,7 +52,9 @@ Download it from Project Gutenberg, Wikisource or the Deutsches Textarchiv,
 strip only the markup, and keep the edition's spelling, punctuation and line
 breaks exactly.
 `der-zauberlehrling.txt` is the 1827 text from Wikisource, which transcribes and
-proofreads it against page scans.
+proofreads it against page scans. `erlkoenig.txt` is from Wikisource as well;
+`eigentum.txt` is from zeno.org (Berliner Ausgabe, Bd. 1), linked through an
+archived snapshot because zeno.org serves no https.
 
 Everything else goes in `texts-local/`, which is gitignored and never leaves
 your machine, or through the app's own import button, which keeps the text in
